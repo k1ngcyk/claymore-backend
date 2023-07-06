@@ -1,0 +1,69 @@
+from typing import List, Union
+from pydantic import BaseModel, ValidationError
+from flask import Flask, request, jsonify
+from sqlalchemy.orm import relationship, sessionmaker
+from sqlalchemy import create_engine, Column, Integer, String, Float, ForeignKey, Date, Time, Enum, Boolean
+from sqlalchemy.ext.declarative import declarative_base
+import datetime
+
+# ...其他代码（例如引入的库、数据库连接等）...
+
+# ...其他模型定义（例如PostResponse等）...
+
+@app.route('/projects/<int:project_id>/database/settings', methods=['GET'])
+def get_settings(project_id):
+    settings = db.query(Setting).filter_by(project_id=project_id).all()
+
+    response_data = []
+    for setting in settings:
+        response_data.append({"key": setting.key, "value": setting.value})
+
+    return jsonify({"settings": response_data})
+
+
+@app.route('/projects/<int:project_id>/database/settings', methods=['POST'])
+def add_setting(project_id):
+    try:
+        request_data = AddSettingRequest.parse_raw(request.data)
+    except ValidationError as e:
+        return jsonify({"error": str(e)}), 400
+
+    new_setting = Setting(
+        project_id=project_id,
+        key=request_data.key,
+        value=request_data.value,
+        created_at=datetime.datetime.now(),
+        updated_at=datetime.datetime.now()
+    )
+
+    db.add(new_setting)
+    db.commit()
+
+    return jsonify(PostResponse())
+
+
+@app.route('/projects/<int:project_id>/database/settings/<int:id>', methods=['POST'])
+def edit_setting(project_id, id):
+    try:
+        request_data = EditSettingRequest.parse_raw(request.data)
+    except ValidationError as e:
+        return jsonify({"error": str(e)}), 400
+
+    setting = db.query(Setting).filter_by(project_id=project_id, id=id).first()
+
+    if not setting:
+        return jsonify({"error": "Setting not found"}), 404
+
+    if request_data.type == 'edit':
+        setattr(setting, request_data.field, request_data.content)
+        setting.updated_at = datetime.datetime.now()
+    elif request_data.type == 'delete':
+        db.delete(setting)
+
+    db.commit()
+
+    return jsonify(PostResponse())
+
+
+if __name__ == '__main__':
+    app.run()
