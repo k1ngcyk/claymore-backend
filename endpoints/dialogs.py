@@ -2,12 +2,12 @@ from flask import request, jsonify
 from pydantic import ValidationError
 
 from setup import app, db
-from models import GetDialogRequest, Candidate, EditDialogRequest, PostResponse
+from models import GetDialogRequest, Candidate, EditDialogRequest, PostResponse, Dialog
 
 
 @app.route('/projects/<int:project_id>/generation_job/<int:id>/candidates', methods=['GET'])
 def get_generation_job_candidates(project_id, id):
-    candidates = db.query(Candidate).filter_by(project_id=project_id, generation_job_id=id).all()
+    candidates = db.query(Dialog).filter_by(project_id=project_id, generation_job_id=id).all()
 
     response_data = []
     for candidate in candidates:
@@ -28,12 +28,12 @@ def get_dialog(project_id):
     filter_value = request_data.filter.value
 
     if filter_type == 'value':
-        candidates = db.query(Candidate).filter_by(**{filter_field: filter_value}).all()
+        candidates = db.query(Dialog).filter_by(**{filter_field: filter_value}).all()
     elif filter_type == 'exists':
         if filter_value:
-            candidates = db.query(Candidate).filter(Candidate.__table__.c[filter_field].isnot(None)).all()
+            candidates = db.query(Dialog).filter(Candidate.__table__.c[filter_field].isnot(None)).all()
         else:
-            candidates = db.query(Candidate).filter(Candidate.__table__.c[filter_field].is_(None)).all()
+            candidates = db.query(Dialog).filter(Candidate.__table__.c[filter_field].is_(None)).all()
 
     response_data = []
     for candidate in candidates:

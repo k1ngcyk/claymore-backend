@@ -8,7 +8,7 @@ from models import PostResponse, LoginRequest, RegisterRequest
 def login():
     req_data = request.json
     try:
-        login_request = LoginRequest(**req_data)
+        login_request = LoginRequest.model_validate_json(**req_data)
     except ValueError as e:
         return jsonify(PostResponse(status="error", message=str(e))), 400
 

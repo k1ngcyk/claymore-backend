@@ -120,6 +120,7 @@ class GetDialogRequest(BaseModel):
 class EditDialogRequest(BaseModel):
     field: str
     content: str
+    user_id: int
 
 
 class AddSettingRequest(BaseModel):

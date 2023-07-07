@@ -21,7 +21,7 @@ def get_settings(project_id):
 @app.route('/projects/<int:project_id>/database/settings', methods=['POST'])
 def add_setting(project_id):
     try:
-        request_data = AddSettingRequest.parse_raw(request.data)
+        request_data = AddSettingRequest.model_validate(**request.json)
     except ValidationError as e:
         return jsonify({"error": str(e)}), 400
 
@@ -39,20 +39,21 @@ def add_setting(project_id):
     return jsonify(PostResponse())
 
 
-@app.route('/projects/<int:project_id>/database/settings/<int:id>', methods=['POST'])
-def edit_setting(project_id, id):
+@app.route('/projects/<int:project_id>/database/settings/<int:setting_id>', methods=['POST'])
+def edit_setting(project_id, setting_id):
     try:
-        request_data = EditSettingRequest.parse_raw(request.data)
+        request_data = EditSettingRequest.model_validate(request.json)
     except ValidationError as e:
         return jsonify({"error": str(e)}), 400
 
-    setting = db.query(Setting).filter_by(project_id=project_id, id=id).first()
+    setting = db.query(Setting).filter_by(project_id=project_id, id=setting_id).first()
 
     if not setting:
         return jsonify({"error": "Setting not found"}), 404
 
     if request_data.type == 'edit':
         setattr(setting, request_data.field, request_data.content)
+
         setting.updated_at = datetime.datetime.now()
     elif request_data.type == 'delete':
         db.delete(setting)

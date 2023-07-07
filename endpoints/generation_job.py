@@ -1,3 +1,5 @@
+import json
+
 from flask import request, jsonify
 from jsons import ValidationError
 from setup import app, db
@@ -12,13 +14,14 @@ def add_generator(project_id):
     try:
         add_generator_request = AddGeneratorRequest(**req_data)
     except ValueError as e:
-        return jsonify(PostResponse(status="error", message=str(e))), 400
+        return jsonify(PostResponse(status="error", message=str(e)).model_dump()), 400
 
-    new_generator = Generator(name=add_generator_request.name, content=add_generator_request.content, project_id=project_id)
+    new_generator = Generator(name=add_generator_request.name, content=json.dumps(add_generator_request.content),
+                              project_id=project_id)
     db.session.add(new_generator)
     db.session.commit()
 
-    return jsonify(PostResponse(status="success", message="生成器已添加"))
+    return jsonify(PostResponse(status="success", message="生成器已添加").model_dump())
 
 @app.route('/projects/<int:project_id>/generation_job', methods=['POST'])
 def create_generation_job(project_id):
@@ -26,12 +29,12 @@ def create_generation_job(project_id):
     try:
         create_generation_job_request = CreateGenerationJobRequest(**req_data)
     except ValueError as e:
-        return jsonify(PostResponse(status="error", message=str(e))), 400
+        return jsonify(PostResponse(status="error", message=str(e)).model_dump()), 400
 
     generator = Generator.query.get(create_generation_job_request.generator_id)
 
     if not generator:
-        return jsonify(PostResponse(status="error", message="生成器不存在")), 404
+        return jsonify(PostResponse(status="error", message="生成器不存在").model_dump()), 404
 
     new_generation_job = GenerationJob(
         project_id=project_id,
@@ -45,14 +48,15 @@ def create_generation_job(project_id):
 
     return jsonify(PostResponse(status="success", message="生成任务已创建"))
 
-@app.route('/projects/<int:project_id>/generation_job/<int:id>', methods=['POST'])
-def generation_job_action(project_id, id):
+
+@app.route('/projects/<int:project_id>/generation_job/<int:job_id>', methods=['POST'])
+def generation_job_action(project_id, job_id):
     try:
-        request_data = GenerationJobActionRequest.parse_raw(request.data)
+        request_data = GenerationJobActionRequest(**request.json)
     except ValidationError as e:
         return jsonify({"error": str(e)}), 400
 
-    generation_job = db.query(GenerationJob).filter_by(project_id=project_id, id=id).first()
+    generation_job = db.query(GenerationJob).filter_by(project_id=project_id, id=job_id).first()
 
     if not generation_job:
         return jsonify({"error": "GenerationJob not found"}), 404
@@ -72,6 +76,10 @@ def generation_job_action(project_id, id):
     return jsonify(PostResponse())
 
 
+def get_job_progress(job: GenerationJob):
+    return float(job.generated_count) / float(job.total_count) if job.total_count > 0 else 0
+
+
 @app.route('/projects/<int:project_id>/generation_job', methods=['GET'])
 def get_all_generation_jobs(project_id):
     try:
@@ -82,7 +90,8 @@ def get_all_generation_jobs(project_id):
     if request_data.filter == 'all':
         generation_jobs = db.query(GenerationJob).filter_by(project_id=project_id).all()
     elif request_data.filter == 'unfinished':
-        generation_jobs = db.query(GenerationJob).filter_by(project_id=project_id).filter(GenerationJob.status != 'Finished').all()
+        generation_jobs = db.query(GenerationJob).filter_by(project_id=project_id).filter(
+            GenerationJob.status == 'Running').all()
 
     response_data = []
     for job in generation_jobs:
@@ -91,21 +100,21 @@ def get_all_generation_jobs(project_id):
             "name": job.name,
             "created_at": job.created_at,
             "status": job.status,
-            "progress": float(job.generated_count) / float(job.total_count) if job.total_count > 0 else 0
+            "progress": get_job_progress(job),
         })
 
     return jsonify({"jobs": response_data})
 
 
-@app.route('/projects/<int:project_id>/generation_job/<int:id>', methods=['GET'])
-def get_generation_job_detail(project_id, id):
-    generation_job = db.query(GenerationJob).filter_by(project_id=project_id, id=id).first()
+@app.route('/projects/<int:project_id>/generation_job/<int:job_id>', methods=['GET'])
+def get_generation_job_detail(project_id, job_id):
+    generation_job = db.query(GenerationJob).filter_by(project_id=project_id, id=job_id).first()
 
     if not generation_job:
         return jsonify({"error": "GenerationJob not found"}), 404
 
     job_detail_response = JobDetailResponse(
-        progress=float(generation_job.generated_count) / float(generation_job.total_count) if generation_job.total_count > 0 else 0,
+        progress=get_job_progress(generation_job),
         token=generation_job.tokens,
         duration=generation_job.duration,
         generator=[],  # 这里应该填充实际的生成器数据
@@ -117,4 +126,4 @@ def get_generation_job_detail(project_id, id):
         feedback=0  # 这里应该填充实际的反馈数据
     )
 
-    return jsonify(job_detail_response.dict())
+    return jsonify(job_detail_response.model_dump())
