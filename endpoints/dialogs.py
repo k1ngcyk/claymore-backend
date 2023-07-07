@@ -2,7 +2,7 @@ from flask import request, jsonify
 from pydantic import ValidationError
 
 from setup import app, db
-from validators import GetDialogRequest, Candidate, EditDialogRequest, PostResponse
+from models import GetDialogRequest, Candidate, EditDialogRequest, PostResponse
 
 
 @app.route('/projects/<int:project_id>/generation_job/<int:id>/candidates', methods=['GET'])

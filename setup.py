@@ -3,7 +3,7 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 
 # 创建 Flask 应用实例
-app = Flask(__name__)
+app = Flask('data-augmenter')
 
 # 配置数据库 URI
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///example.db'

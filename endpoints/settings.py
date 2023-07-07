@@ -3,8 +3,8 @@ from pydantic import ValidationError
 from flask import request, jsonify
 import datetime
 from setup import app, db
-from orms import Setting
-from validators import AddSettingRequest, PostResponse, EditSettingRequest
+from models.orms import Setting
+from models.validators import AddSettingRequest, PostResponse, EditSettingRequest
 
 
 @app.route('/projects/<int:project_id>/database/settings', methods=['GET'])
