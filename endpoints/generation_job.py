@@ -1,11 +1,7 @@
 app = Flask(__name__)
 
 # 创建数据库连接和会话
-DATABASE_URL = "sqlite:///./test.db"
-engine = create_engine(DATABASE_URL)
-Base = declarative_base()
-Session = sessionmaker(bind=engine)
-db = Session()
+
 
 
 @app.route('/projects/<int:project_id>/generator', methods=['POST'])
@@ -46,7 +42,7 @@ def create_generation_job(project_id):
     db.session.commit()
 
     return jsonify(PostResponse(status="success", message="生成任务已创建"))
-    
+
 @app.route('/projects/<int:project_id>/generation_job/<int:id>', methods=['POST'])
 def generation_job_action(project_id, id):
     try:
