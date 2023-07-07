@@ -1,7 +1,7 @@
 from flask import request, jsonify
 from jsons import ValidationError
 from setup import app, db
-from models import Generator
+from orms import Generator
 from validators import AddGeneratorRequest, PostResponse, CreateGenerationJobRequest, GenerationJob, \
     GenerationJobActionRequest, GetAllGenerationJobsRequest, JobDetailResponse
 

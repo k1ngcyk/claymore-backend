@@ -1,6 +1,6 @@
 from flask import request, jsonify
 from setup import app, db
-from models import User
+from orms import User
 from validators import PostResponse, LoginRequest, RegisterRequest
 
 

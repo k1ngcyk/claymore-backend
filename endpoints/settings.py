@@ -3,7 +3,7 @@ from pydantic import ValidationError
 from flask import request, jsonify
 import datetime
 from setup import app, db
-from models import Setting
+from orms import Setting
 from validators import AddSettingRequest, PostResponse, EditSettingRequest
 
 
