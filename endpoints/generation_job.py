@@ -1,7 +1,9 @@
-app = Flask(__name__)
-
-# 创建数据库连接和会话
-
+from flask import request, jsonify
+from jsons import ValidationError
+from setup import app, db
+from models import Generator
+from validators import AddGeneratorRequest, PostResponse, CreateGenerationJobRequest, GenerationJob, \
+    GenerationJobActionRequest, GetAllGenerationJobsRequest, JobDetailResponse
 
 
 @app.route('/projects/<int:project_id>/generator', methods=['POST'])
@@ -116,7 +118,3 @@ def get_generation_job_detail(project_id, id):
     )
 
     return jsonify(job_detail_response.dict())
-
-
-if __name__ == '__main__':
-    app.run()

@@ -1,14 +1,11 @@
 from typing import List, Union
-from pydantic import BaseModel, ValidationError
-from flask import Flask, request, jsonify
-from sqlalchemy.orm import relationship, sessionmaker
-from sqlalchemy import create_engine, Column, Integer, String, Float, ForeignKey, Date, Time, Enum, Boolean
-from sqlalchemy.ext.declarative import declarative_base
+from pydantic import ValidationError
+from flask import request, jsonify
 import datetime
+from setup import app, db
+from models import Setting
+from validators import AddSettingRequest, PostResponse, EditSettingRequest
 
-# ...其他代码（例如引入的库、数据库连接等）...
-
-# ...其他模型定义（例如PostResponse等）...
 
 @app.route('/projects/<int:project_id>/database/settings', methods=['GET'])
 def get_settings(project_id):
@@ -63,7 +60,3 @@ def edit_setting(project_id, id):
     db.commit()
 
     return jsonify(PostResponse())
-
-
-if __name__ == '__main__':
-    app.run()

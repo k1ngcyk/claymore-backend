@@ -1,24 +1,13 @@
-from typing import List, Union
-from pydantic import BaseModel, ValidationError
-from flask import Flask, request, jsonify
-from sqlalchemy.orm import relationship, sessionmaker
-from sqlalchemy import create_engine, Column, Integer, String, Float, ForeignKey, Date, Time, Enum, Boolean
-from sqlalchemy.ext.declarative import declarative_base
-import datetime
+from flask import request, jsonify
+from pydantic import ValidationError
 
+from setup import app, db
+from validators import GetDialogRequest, Candidate, EditDialogRequest, PostResponse
 
-# ...其他代码（例如引入的库、数据库连接等）...
-
-class Candidate(db.Model):
-    __tablename__ = 'candidate'
-    id = Column(Integer, primary_key=True)
-    # ...其他字段（例如内容、评论等）...
-
-# ...其他模型定义（例如PostResponse、EditDialogRequest等）...
 
 @app.route('/projects/<int:project_id>/generation_job/<int:id>/candidates', methods=['GET'])
 def get_generation_job_candidates(project_id, id):
-    candidates = db.query(Candidate).filter_by(generation_job_id=id).all()
+    candidates = db.query(Candidate).filter_by(project_id=project_id, generation_job_id=id).all()
 
     response_data = []
     for candidate in candidates:
@@ -55,7 +44,7 @@ def get_dialog(project_id):
 
 @app.route('/projects/<int:project_id>/database/dialog/<int:id>', methods=['GET'])
 def get_single_dialog(project_id, id):
-    candidate = db.query(Candidate).filter_by(id=id).first()
+    candidate = db.query(Candidate).filter_by(project_id=project_id, id=id).first()
 
     if not candidate:
         return jsonify({"error": "Candidate not found"}), 404
@@ -70,7 +59,7 @@ def edit_dialog(project_id, id):
     except ValidationError as e:
         return jsonify({"error": str(e)}), 400
 
-    candidate = db.query(Candidate).filter_by(id=id).first()
+    candidate = db.query(Candidate).filter_by(project_id=project_id, id=id).first()
 
     if not candidate:
         return jsonify({"error": "Candidate not found"}), 404
@@ -82,7 +71,3 @@ def edit_dialog(project_id, id):
     db.commit()
 
     return jsonify(PostResponse())
-
-
-if __name__ == '__main__':
-    app.run()

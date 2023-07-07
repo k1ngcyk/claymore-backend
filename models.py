@@ -1,14 +1,7 @@
 # 数据库 ORM
 
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
+from setup import db
 from sqlalchemy import Column, Integer, String, Date, Time, ForeignKey, Enum, Float
-from sqlalchemy.orm import relationship
-
-app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///example.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
 
 
 

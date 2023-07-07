@@ -1,3 +1,9 @@
+from flask import request, jsonify
+from setup import app, db
+from models import User
+from validators import PostResponse, LoginRequest, RegisterRequest
+
+
 @app.route('/api/login', methods=['POST'])
 def login():
     req_data = request.json
