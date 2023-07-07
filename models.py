@@ -4,7 +4,6 @@ from setup import db
 from sqlalchemy import Column, Integer, String, Date, Time, ForeignKey, Enum, Float
 
 
-
 class Generator(db.Model):
     __tablename__ = 'generator'
     id = Column(Integer, primary_key=True)
@@ -12,27 +11,32 @@ class Generator(db.Model):
     name = Column(String)
     content = Column(db.JSON)
 
+
 class Preset(db.Model):
     __tablename__ = 'preset'
     id = Column(Integer, primary_key=True)
     project_id = Column(Integer, ForeignKey('project.id'))
     generator_id = Column(Integer, ForeignKey('generator.id'))
 
+
 class Project(db.Model):
     __tablename__ = 'project'
     id = Column(Integer, primary_key=True)
     name = Column(String)
+
 
 class ProjectUser(db.Model):
     __tablename__ = 'project_user'
     project_id = Column(Integer, ForeignKey('project.id'), primary_key=True)
     user_id = Column(Integer, ForeignKey('user.id'), primary_key=True)
 
+
 class User(db.Model):
     __tablename__ = 'user'
     id = Column(Integer, primary_key=True)
     name = Column(String)
     password = Column(String)
+
 
 class Dialog(db.Model):
     __tablename__ = 'dialog'
@@ -45,6 +49,7 @@ class Dialog(db.Model):
     created_at = Column(Date)
     attrs = Column(db.JSON)
 
+
 class Feedback(db.Model):
     __tablename__ = 'feedback'
     project_id = Column(Integer, ForeignKey('project.id'), primary_key=True)
@@ -54,6 +59,7 @@ class Feedback(db.Model):
     comment = Column(String)
     content = Column(db.JSON)
 
+
 class Setting(db.Model):
     __tablename__ = 'setting'
     project_id = Column(Integer, ForeignKey('project.id'), primary_key=True)
@@ -62,6 +68,7 @@ class Setting(db.Model):
     value = Column(String)
     created_at = Column(Date)
     updated_at = Column(Date)
+
 
 class GenerationJob(db.Model):
     __tablename__ = 'generation_job'
@@ -77,4 +84,3 @@ class GenerationJob(db.Model):
     status = Column(Enum('Error', 'Running', 'Finished', 'Stopped', 'Waiting'), nullable=False)
     generated_count = Column(Integer)
     total_count = Column(Integer)
-    
