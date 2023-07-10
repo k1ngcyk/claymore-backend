@@ -1,4 +1,5 @@
 # 数据库 ORM
+import sqlalchemy
 
 from setup import db
 from sqlalchemy import Column, Integer, String, Date, Time, ForeignKey, Enum, Float, JSON
@@ -37,6 +38,7 @@ class ProjectUser(db.Model):
 class User(db.Model):
     __tablename__ = 'user'
     id = Column(Integer, primary_key=True)
+    email = Column(String)
     name = Column(String)
     password = Column(String)
 
@@ -49,9 +51,9 @@ class Dialog(db.Model):
     generation_job_id = Column(Integer, ForeignKey('generation_job.id'))
     source_type = Column(Enum('User', 'Generator'), nullable=False)
     source_id = Column(Integer)
-    status = Column(Enum('Testing', 'Candidate', 'Canon', 'Removed'), nullable=False)
     created_at = Column(Date)
-    attrs = Column(db.JSON)
+    edited = Column(sqlalchemy.Boolean)
+    attrs = Column(db.JSON) # for other metrics
 
 
 class Feedback(db.Model):

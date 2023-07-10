@@ -4,8 +4,15 @@ from flask import request, jsonify
 from jsons import ValidationError
 from setup import app, db, celery_app
 from models.orms import Generator, Dialog, GenerationJob
-from models.validators import AddGeneratorRequest, PostResponse, CreateGenerationJobRequest, GenerationJobResponse, \
-    GenerationJobActionRequest, GetAllGenerationJobsRequest, JobDetailResponse, Status, GenerationJobListResponse
+from models.validators import (
+    AddGeneratorRequest,
+    PostResponse,
+    CreateGenerationJobRequest,
+    GenerationJobResponse,
+    GenerationJobActionRequest,
+    JobDetailResponse,
+    Status,
+    GenerationJobListResponse)
 from tasks.generation import generate_dialogs
 
 
@@ -78,14 +85,14 @@ def generation_job_action(project_id, job_id):
     # 根据请求类型进行相应的操作
     if request_data.type == 'start':
         generation_job.status = 'Running'
-        task = generate_dialogs.delay()
+        task = generate_dialogs.delay(job_id)
         generation_job.task_id = task.id
     elif request_data.type == 'stop':
         generation_job.status = 'Stopped'
         celery_app.control.revoke(generation_job.task_id)
     elif request_data.type == 'retry':
         generation_job.status = 'Running'
-        task = generate_dialogs.delay()
+        task = generate_dialogs.delay(job_id)
         generation_job.task_id = task.id
 
     db.commit()
@@ -99,13 +106,13 @@ def get_job_progress(job: GenerationJob):
 @app.route('/projects/<int:project_id>/generation_job', methods=['GET'])
 def get_all_generation_jobs(project_id):
     try:
-        request_data = GetAllGenerationJobsRequest.parse_raw(request.args.get('filter'))
-    except ValidationError as e:
-        return jsonify({"error": str(e)}), 400
+        job_filter = request.args.get('filter')
+    except Exception as e:
+        return jsonify({"status": str(e), "message": "filter parameter not found"}), 400
 
-    if request_data.filter == 'all':
+    if job_filter == 'all':
         generation_jobs = db.query(GenerationJob).filter_by(project_id=project_id).all()
-    elif request_data.filter == 'unfinished':
+    elif job_filter == 'unfinished':
         generation_jobs = db.query(GenerationJob).filter_by(project_id=project_id).filter(
             GenerationJob.status == 'Running').all()
     else:

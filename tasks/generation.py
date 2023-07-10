@@ -82,7 +82,6 @@ def generate_dialogs(job_id):
                                 content=response,
                                 source_type='Generator',
                                 source_id=job.generator_id,
-                                status='Candidate',
                                 created_at=datetime.now(),
                                 attrs={})
                 db.add(dialog)
