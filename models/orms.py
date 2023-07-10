@@ -29,6 +29,7 @@ class ProjectUser(db.Model):
     __tablename__ = 'project_user'
     project_id = Column(Integer, ForeignKey('project.id'), primary_key=True)
     user_id = Column(Integer, ForeignKey('user.id'), primary_key=True)
+    entered_at = Column(Date)
 
 
 class User(db.Model):
@@ -72,8 +73,8 @@ class Setting(db.Model):
 
 class GenerationJob(db.Model):
     __tablename__ = 'generation_job'
-    project_id = Column(Integer, ForeignKey('project.id'), primary_key=True)
     id = Column(Integer, primary_key=True)
+    project_id = Column(Integer, ForeignKey('project.id'), primary_key=True)
     model_name = Column(String)
     temperature = Column(Float)
     tokens = Column(Integer)
@@ -84,3 +85,5 @@ class GenerationJob(db.Model):
     status = Column(Enum('Error', 'Running', 'Finished', 'Stopped', 'Waiting'), nullable=False)
     generated_count = Column(Integer)
     total_count = Column(Integer)
+
+

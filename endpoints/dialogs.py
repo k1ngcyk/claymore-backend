@@ -62,4 +62,4 @@ def edit_dialog(project_id, dialog_id):
     setattr(candidate, field, content)
     db.commit()
 
-    return jsonify(PostResponse())
+    return jsonify(PostResponse().model_dump())

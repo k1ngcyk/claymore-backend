@@ -16,7 +16,8 @@ def add_generator(project_id):
     except ValueError as e:
         return jsonify(PostResponse(status="error", message=str(e)).model_dump()), 400
 
-    new_generator = Generator(name=add_generator_request.name, content=json.dumps(add_generator_request.content),
+    new_generator = Generator(name=add_generator_request.name,
+                              content=json.dumps(add_generator_request.content),
                               project_id=project_id)
     db.session.add(new_generator)
     db.session.commit()
