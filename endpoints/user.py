@@ -1,7 +1,7 @@
 from flask import request, jsonify
 from setup import app, db
-from models import User
-from models import PostResponse, LoginRequest, RegisterRequest
+from models.orms import User
+from models.validators import PostResponse, LoginRequest, RegisterRequest
 
 
 @app.route('/api/login', methods=['POST'])

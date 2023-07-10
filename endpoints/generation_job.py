@@ -3,8 +3,8 @@ import json
 from flask import request, jsonify
 from jsons import ValidationError
 from setup import app, db, celery_app
-from models.orms import Generator, Dialog
-from models.validators import AddGeneratorRequest, PostResponse, CreateGenerationJobRequest, GenerationJob, \
+from models.orms import Generator, Dialog, GenerationJob
+from models.validators import AddGeneratorRequest, PostResponse, CreateGenerationJobRequest, GenerationJobResponse, \
     GenerationJobActionRequest, GetAllGenerationJobsRequest, JobDetailResponse, Status
 from tasks.generation import generate_dialogs
 
@@ -129,7 +129,7 @@ def get_generation_job_detail(project_id, job_id):
     generation_job = db.query(GenerationJob).filter_by(project_id=project_id, id=job_id).first()
 
     if not generation_job:
-        return jsonify({"error": "GenerationJob not found"}), 404
+        return jsonify({"error": "Generation job not found"}), 404
 
     job_detail_response = JobDetailResponse(
         progress=get_job_progress(generation_job),

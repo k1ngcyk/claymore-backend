@@ -21,7 +21,7 @@ def generate(prompt: str, model='gpt-3.5-turbo', temperature=0):
     answer = openai.ChatCompletion.create(
         model=model,
         messages=[
-            {"role": "system", "content": "You're ChatGPT plus."},
+            # {"role": "system", "content": "You're ChatGPT plus."},
             {"role": "user", "content": prompt},
         ],
         temperature=temperature,

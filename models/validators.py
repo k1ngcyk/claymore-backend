@@ -41,22 +41,7 @@ class DialogCandidateResponse(BaseModel):
     candidates: List[Candidate]
 
 
-class FilterValue(BaseModel):
-    field: str
-    type: 'value'
-    value: str
-
-
-class FilterExists(BaseModel):
-    field: str
-    type: 'exists'
-    value: bool
-
-
-Filter = Union[FilterValue, FilterExists]
-
-
-class GenerationJob(BaseModel):
+class GenerationJobResponse(BaseModel):
     id: int
     name: str
     created_at: datetime
@@ -110,10 +95,6 @@ class GenerationJobActionRequest(BaseModel):
 
 class GetAllGenerationJobsRequest(BaseModel):
     filter: str
-
-
-class GetDialogRequest(BaseModel):
-    filter: Filter
 
 
 class EditDialogRequest(BaseModel):
