@@ -2,10 +2,7 @@ from flask import request, jsonify
 from pydantic import ValidationError
 
 from setup import app, db
-from models import GetDialogRequest, Candidate, EditDialogRequest, PostResponse, Dialog
-
-
-
+from models import EditDialogRequest, PostResponse, Dialog
 
 
 @app.route('/projects/<int:project_id>/dialog', methods=['GET'])
@@ -21,8 +18,6 @@ def get_dialog(project_id):
     except ValidationError as e:
         return jsonify({"error": str(e)}), 400
 
-
-
     if filter_type == 'value':
         candidates = db.query(Dialog).filter_by(**{filter_field: filter_value}).all()
     elif filter_type == 'exists':
@@ -30,7 +25,8 @@ def get_dialog(project_id):
             candidates = db.query(Dialog).filter(Dialog.__table__.c[filter_field].isnot(None)).all()
         else:
             candidates = db.query(Dialog).filter(Dialog.__table__.c[filter_field].is_(None)).all()
-
+    else:
+        return jsonify({'error': 'unknown filter'}), 400
     response_data = []
     for candidate in candidates:
         response_data.append(candidate.model_dump())  # 假设Candidate模型有一个将其转换为字典的方法
@@ -38,9 +34,9 @@ def get_dialog(project_id):
     return jsonify({"candidates": response_data})
 
 
-@app.route('/projects/<int:project_id>/dialog/<int:id>', methods=['GET'])
-def get_single_dialog(project_id, id):
-    candidate = db.query(Dialog).filter_by(project_id=project_id, id=id).first()
+@app.route('/projects/<int:project_id>/dialog/<int:dialog_id>', methods=['GET'])
+def get_single_dialog(project_id, dialog_id):
+    candidate = db.query(Dialog).filter_by(project_id=project_id, id=dialog_id).first()
 
     if not candidate:
         return jsonify({"error": "Candidate not found"}), 404
@@ -48,14 +44,14 @@ def get_single_dialog(project_id, id):
     return jsonify(candidate.model_dump())  # 假设Candidate模型有一个将其转换为字典的方法
 
 
-@app.route('/projects/<int:project_id>/dialog/<int:id>', methods=['POST'])
-def edit_dialog(project_id, id):
+@app.route('/projects/<int:project_id>/dialog/<int:dialog_id>', methods=['POST'])
+def edit_dialog(project_id, dialog_id):
     try:
         request_data = EditDialogRequest.model_validate(request.json)
     except ValidationError as e:
         return jsonify({"error": str(e)}), 400
 
-    candidate = db.query(Dialog).filter_by(project_id=project_id, id=id).first()
+    candidate = db.query(Dialog).filter_by(project_id=project_id, id=dialog_id).first()
 
     if not candidate:
         return jsonify({"error": "Candidate not found"}), 404

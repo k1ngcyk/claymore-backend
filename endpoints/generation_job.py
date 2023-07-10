@@ -5,7 +5,7 @@ from jsons import ValidationError
 from setup import app, db
 from models.orms import Generator, Dialog
 from models.validators import AddGeneratorRequest, PostResponse, CreateGenerationJobRequest, GenerationJob, \
-    GenerationJobActionRequest, GetAllGenerationJobsRequest, JobDetailResponse
+    GenerationJobActionRequest, GetAllGenerationJobsRequest, JobDetailResponse, Status
 
 
 @app.route('/projects/<int:project_id>/generator', methods=['POST'])
@@ -30,7 +30,7 @@ def get_generation_job_candidates(project_id, id):
 
     response_data = []
     for candidate in candidates:
-        response_data.append(candidate.to_dict())  # 假设Candidate模型有一个将其转换为字典的方法
+        response_data.append(candidate.model_dump())
 
     return jsonify({"candidates": response_data})
 
@@ -85,7 +85,7 @@ def generation_job_action(project_id, job_id):
         pass
 
     db.commit()
-    return jsonify(PostResponse())
+    return jsonify(PostResponse(status=Status.success, message='Correct').model_dump_json())
 
 
 def get_job_progress(job: GenerationJob):
