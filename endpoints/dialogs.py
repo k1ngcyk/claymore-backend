@@ -21,9 +21,19 @@ def get_dialog(project_id):
         return jsonify({"error": str(e)}), 400
 
     if filter_type == 'all':
-        pass
+        page = request.args.get('page', 1, type=int)
+        per_page = request.args.get('per_page', 10, type=int)
+        offset = (page - 1) * per_page
+
+        dialogs = Dialog.query \
+            .filter_by(project_id=project_id) \
+            .order_by(Dialog.created_at.desc()) \
+            .offset(offset) \
+            .limit(per_page).all()
     elif filter_type == 'value':
-        dialogs = db.query(Dialog).filter_by(project_id=project_id, **{filter_field: filter_value}).all()
+        dialogs = db.query(Dialog) \
+            .filter_by(project_id=project_id, **{filter_field: filter_value}) \
+            .all()
     elif filter_type == 'exists':
         if filter_value:
             dialogs = db.query(Dialog).filter(Dialog.__table__.c[filter_field].isnot(None)).all()
