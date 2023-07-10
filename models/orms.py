@@ -52,6 +52,7 @@ class Dialog(db.Model):
     source_type = Column(Enum('User', 'Generator'), nullable=False)
     source_id = Column(Integer)
     created_at = Column(Date)
+    average_quality = Column(Float)
     edited = Column(sqlalchemy.Boolean)
     attrs = Column(db.JSON) # for other metrics
 

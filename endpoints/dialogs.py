@@ -2,10 +2,11 @@ from copy import deepcopy
 
 from flask import request, jsonify
 from pydantic import ValidationError
+from sqlalchemy import func
 
 from setup import app, db
-from models.validators import EditDialogRequest, PostResponse
-from models.orms import Dialog
+from models.validators import EditDialogRequest, PostResponse, Status
+from models.orms import Dialog, Feedback
 
 
 @app.route('/projects/<int:project_id>/dialog', methods=['GET'])
@@ -50,12 +51,27 @@ def get_dialog(project_id):
 
 @app.route('/projects/<int:project_id>/dialog/<int:dialog_id>', methods=['GET'])
 def get_single_dialog(project_id, dialog_id):
-    candidate = db.query(Dialog).filter_by(project_id=project_id, id=dialog_id).first()
+    dialog = db.query(Dialog).filter_by(project_id=project_id, id=dialog_id).first()
+    feedbacks = db.query(Feedback).filter_by(project_id=project_id, dialog_id=dialog_id).all()
+    comments = [feedback.comment for feedback in feedbacks]
+    from collections import Counter
+    if not dialog:
+        return jsonify({"error": "Dialog not found"}), 404
+    quality_values = {
+        'Low': 1,
+        'Medium': 2,
+        'High': 3
+    }
+    quality_counts = Counter(item.quality for item in feedbacks)
 
-    if not candidate:
-        return jsonify({"error": "Candidate not found"}), 404
-
-    return jsonify(candidate.model_dump())
+    return jsonify(dict(
+        content=dialog.content,
+        quality=dialog.quality,
+        quality_counts=quality_counts,
+        comments=comments,
+        edited=dialog.edited,
+        unmarked=dialog.average_quality - 0 < 1e-8,
+    )), 200
 
 
 @app.route('/projects/<int:project_id>/dialog/<int:dialog_id>', methods=['POST'])
@@ -78,4 +94,4 @@ def edit_dialog(project_id, dialog_id):
         candidate.attrs = new_attrs
     db.commit()
 
-    return jsonify(PostResponse().model_dump())
+    return jsonify(PostResponse(status=Status.success, message="Dialog added").model_dump())
