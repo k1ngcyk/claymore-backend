@@ -21,7 +21,6 @@ class GenerationJobActionType(str, Enum):
     start = 'Start'
     stop = 'Stop'
     retry = 'Retry'
-    create = 'Create'
 
 
 class PostResponse(BaseModel):

@@ -1,13 +1,15 @@
 # 数据库 ORM
 
 from setup import db
-from sqlalchemy import Column, Integer, String, Date, Time, ForeignKey, Enum, Float
+from sqlalchemy import Column, Integer, String, Date, Time, ForeignKey, Enum, Float, JSON
 
 
 class Generator(db.Model):
     __tablename__ = 'generator'
     id = Column(Integer, primary_key=True)
     project_id = Column(Integer, ForeignKey('project.id'))
+    user_id = Column(Integer, ForeignKey('user.id'))
+    created_at = Column(Date)
     name = Column(String)
     content = Column(db.JSON)
 
@@ -82,8 +84,10 @@ class GenerationJob(db.Model):
     name = Column(String)
     created_at = Column(Date)
     duration = Column(Time)
+    task_id = Column(String) # Celery task id
     status = Column(Enum('Error', 'Running', 'Finished', 'Stopped', 'Waiting'), nullable=False)
     generated_count = Column(Integer)
     total_count = Column(Integer)
+    variables = Column(JSON)
 
 

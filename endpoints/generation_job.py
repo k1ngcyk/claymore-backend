@@ -2,10 +2,11 @@ import json
 
 from flask import request, jsonify
 from jsons import ValidationError
-from setup import app, db
+from setup import app, db, celery_app
 from models.orms import Generator, Dialog
 from models.validators import AddGeneratorRequest, PostResponse, CreateGenerationJobRequest, GenerationJob, \
     GenerationJobActionRequest, GetAllGenerationJobsRequest, JobDetailResponse, Status
+from tasks.generation import generate_dialogs
 
 
 @app.route('/projects/<int:project_id>/generator', methods=['POST'])
@@ -17,7 +18,7 @@ def add_generator(project_id):
         return jsonify(PostResponse(status="error", message=str(e)).model_dump()), 400
 
     new_generator = Generator(name=add_generator_request.name,
-                              content=json.dumps(add_generator_request.content),
+                              content=add_generator_request.content,
                               project_id=project_id)
     db.session.add(new_generator)
     db.session.commit()
@@ -72,18 +73,20 @@ def generation_job_action(project_id, job_id):
     generation_job = db.query(GenerationJob).filter_by(project_id=project_id, id=job_id).first()
 
     if not generation_job:
-        return jsonify({"error": "GenerationJob not found"}), 404
+        return jsonify({"error": "Generation job not found"}), 404
 
     # 根据请求类型进行相应的操作
     if request_data.type == 'start':
         generation_job.status = 'Running'
+        task = generate_dialogs.delay()
+        generation_job.task_id = task.id
     elif request_data.type == 'stop':
         generation_job.status = 'Stopped'
+        celery_app.control.revoke(generation_job.task_id)
     elif request_data.type == 'retry':
         generation_job.status = 'Running'
-    elif request_data.type == 'create':
-        # 在这里添加创建新任务的逻辑
-        pass
+        task = generate_dialogs.delay()
+        generation_job.task_id = task.id
 
     db.commit()
     return jsonify(PostResponse(status=Status.success, message='Correct').model_dump_json())
