@@ -2,6 +2,10 @@
 from celery import Celery
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
+import openai
+from dotenv import load_dotenv
+
+openai.api_key = load_dotenv('OPENAI_API_KEY')
 
 # 创建 Flask 应用实例
 app = Flask('data-augmenter')

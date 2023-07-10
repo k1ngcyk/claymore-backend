@@ -93,5 +93,3 @@ class GenerationJob(db.Model):
     generated_count = Column(Integer)
     total_count = Column(Integer)
     variables = Column(JSON)
-
-

@@ -7,7 +7,7 @@ from models.orms import Setting
 from models.validators import AddSettingRequest, PostResponse, EditSettingRequest
 
 
-@app.route('/projects/<int:project_id>/database/settings', methods=['GET'])
+@app.route('/projects/<int:project_id>/settings', methods=['GET'])
 def get_settings(project_id):
     settings = db.query(Setting).filter_by(project_id=project_id).all()
 
@@ -18,7 +18,7 @@ def get_settings(project_id):
     return jsonify({"settings": response_data})
 
 
-@app.route('/projects/<int:project_id>/database/settings', methods=['POST'])
+@app.route('/projects/<int:project_id>/settings', methods=['POST'])
 def add_setting(project_id):
     try:
         request_data = AddSettingRequest.model_validate(**request.json)
@@ -39,7 +39,7 @@ def add_setting(project_id):
     return jsonify(PostResponse())
 
 
-@app.route('/projects/<int:project_id>/database/settings/<int:setting_id>', methods=['POST'])
+@app.route('/projects/<int:project_id>/settings/<int:setting_id>', methods=['POST'])
 def edit_setting(project_id, setting_id):
     try:
         request_data = EditSettingRequest.model_validate(request.json)
