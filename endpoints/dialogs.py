@@ -53,7 +53,7 @@ def get_dialog(project_id):
 def get_single_dialog(project_id, dialog_id):
     dialog = db.query(Dialog).filter_by(project_id=project_id, id=dialog_id).first()
     feedbacks = db.query(Feedback).filter_by(project_id=project_id, dialog_id=dialog_id).all()
-    comments = [feedback.comment for feedback in feedbacks]
+    comments = [feedback.comment for feedback in feedbacks if feedback.comment]
     from collections import Counter
     if not dialog:
         return jsonify({"error": "Dialog not found"}), 404
@@ -62,11 +62,12 @@ def get_single_dialog(project_id, dialog_id):
         'Medium': 2,
         'High': 3
     }
-    quality_counts = Counter(item.quality for item in feedbacks)
-
+    qualities = [item.quality for item in feedbacks]
+    quality_counts = Counter(qualities)
+    avg = sum([quality_values[quality] for quality in qualities]) / len(feedbacks)
     return jsonify(dict(
         content=dialog.content,
-        quality=dialog.quality,
+        quality=avg,
         quality_counts=quality_counts,
         comments=comments,
         edited=dialog.edited,
