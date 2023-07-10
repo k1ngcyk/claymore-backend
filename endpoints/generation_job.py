@@ -141,7 +141,6 @@ def get_generation_job_detail(project_id, job_id):
             "temperature": generation_job.temperature,
             "length": generation_job.tokens
         },
-        feedback=0  # 这里应该填充实际的反馈数据
     )
 
     return jsonify(job_detail_response.model_dump())

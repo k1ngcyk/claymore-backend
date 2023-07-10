@@ -65,7 +65,6 @@ class JobDetailResponse(BaseModel):
     duration: datetime
     generator: List[str]
     config: JobConfig
-    feedback: int
 
 
 class Setting(BaseModel):

@@ -46,6 +46,7 @@ class Dialog(db.Model):
     id = Column(Integer, primary_key=True)
     project_id = Column(Integer, ForeignKey('project.id'))
     content = Column(String)
+    generation_job_id = Column(Integer, ForeignKey('generation_job.id'))
     source_type = Column(Enum('User', 'Generator'), nullable=False)
     source_id = Column(Integer)
     status = Column(Enum('Testing', 'Candidate', 'Canon', 'Removed'), nullable=False)
@@ -60,6 +61,7 @@ class Feedback(db.Model):
     dialog_id = Column(Integer, ForeignKey('dialog.id'), primary_key=True)
     created_at = Column(Date)
     comment = Column(String)
+    quality = Column(Enum('Low', 'Medium', 'High'))
     content = Column(db.JSON)
 
 
