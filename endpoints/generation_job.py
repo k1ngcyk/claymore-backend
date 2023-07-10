@@ -104,6 +104,8 @@ def get_all_generation_jobs(project_id):
     elif request_data.filter == 'unfinished':
         generation_jobs = db.query(GenerationJob).filter_by(project_id=project_id).filter(
             GenerationJob.status == 'Running').all()
+    else:
+        return jsonify({'status': 'error', 'message': 'unknown filter'}), 400
 
     response_data = []
     for job in generation_jobs:
