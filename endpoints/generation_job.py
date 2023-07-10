@@ -5,7 +5,7 @@ from jsons import ValidationError
 from setup import app, db, celery_app
 from models.orms import Generator, Dialog, GenerationJob
 from models.validators import AddGeneratorRequest, PostResponse, CreateGenerationJobRequest, GenerationJobResponse, \
-    GenerationJobActionRequest, GetAllGenerationJobsRequest, JobDetailResponse, Status
+    GenerationJobActionRequest, GetAllGenerationJobsRequest, JobDetailResponse, Status, GenerationJobListResponse
 from tasks.generation import generate_dialogs
 
 
@@ -113,21 +113,21 @@ def get_all_generation_jobs(project_id):
 
     response_data = []
     for job in generation_jobs:
-        response_data.append({
-            "id": job.id,
-            "name": job.name,
-            "created_at": job.created_at,
-            "status": job.status,
-            "progress": get_job_progress(job),
-        })
+        response_data.append(GenerationJobResponse(
+            id=job.id,
+            name=job.name,
+            created_at=job.created_at,
+            status=job.status,
+            progress=get_job_progress(job),
+        ))
 
-    return jsonify({"jobs": response_data})
+    return jsonify(GenerationJobListResponse(jobs=response_data).model_dump())
 
 
 @app.route('/projects/<int:project_id>/generation_job/<int:job_id>', methods=['GET'])
 def get_generation_job_detail(project_id, job_id):
     generation_job = db.query(GenerationJob).filter_by(project_id=project_id, id=job_id).first()
-
+    generator = db.query(Generator).get(generation_job.generator_id).first()
     if not generation_job:
         return jsonify({"error": "Generation job not found"}), 404
 
@@ -135,7 +135,7 @@ def get_generation_job_detail(project_id, job_id):
         progress=get_job_progress(generation_job),
         token=generation_job.tokens,
         duration=generation_job.duration,
-        generator=[],  # 这里应该填充实际的生成器数据
+        generator=generator.content,
         config={
             "model": generation_job.model_name,
             "temperature": generation_job.temperature,

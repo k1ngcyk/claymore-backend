@@ -49,6 +49,10 @@ class GenerationJobResponse(BaseModel):
     progress: float
 
 
+class GenerationJobListResponse(BaseModel):
+    jobs: List[GenerationJobResponse]
+
+
 class JobConfig(BaseModel):
     model: str
     temperature: str
