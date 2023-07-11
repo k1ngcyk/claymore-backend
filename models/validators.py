@@ -85,6 +85,7 @@ class RegisterRequest(BaseModel):
 class AddGeneratorRequest(BaseModel):
     name: str
     content: List[str]
+    user_id: int
 
 
 class CreateGenerationJobRequest(BaseModel):

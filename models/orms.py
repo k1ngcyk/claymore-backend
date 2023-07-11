@@ -1,8 +1,10 @@
 # 数据库 ORM
+from datetime import datetime
+
 import sqlalchemy
 
 from setup import db
-from sqlalchemy import Column, Integer, String, Date, Time, ForeignKey, Enum, Float, JSON
+from sqlalchemy import Column, Integer, String, Date, Time, ForeignKey, Enum, Float, JSON, DateTime
 
 
 class Generator(db.Model):
@@ -10,7 +12,7 @@ class Generator(db.Model):
     id = Column(Integer, primary_key=True)
     project_id = Column(Integer, ForeignKey('project.id'))
     user_id = Column(Integer, ForeignKey('user.id'))
-    created_at = Column(Date)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     name = Column(String)
     content = Column(db.JSON)
 
