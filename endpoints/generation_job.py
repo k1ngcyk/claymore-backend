@@ -22,7 +22,7 @@ def add_generator(project_id):
     try:
         add_generator_request = AddGeneratorRequest(**req_data)
     except ValueError as e:
-        return jsonify(PostResponse(status="error", message=str(e)).json()), 400
+        return jsonify(PostResponse(status=Status.failure, message=str(e)).json()), 400
 
     new_generator = Generator(name=add_generator_request.name,
                               content=add_generator_request.content,
@@ -30,7 +30,7 @@ def add_generator(project_id):
     db.session.add(new_generator)
     db.session.commit()
 
-    return jsonify(PostResponse(status="success", message="生成器已添加").model_dump())
+    return jsonify(PostResponse(status=Status.success, message="Added Generator").model_dump())
 
 
 @app.route('/projects/<int:project_id>/generation_job/<int:id>/candidates', methods=['GET'])
@@ -50,12 +50,12 @@ def create_generation_job(project_id):
     try:
         create_generation_job_request = CreateGenerationJobRequest(**req_data)
     except ValueError as e:
-        return jsonify(PostResponse(status="error", message=str(e)).model_dump()), 400
+        return jsonify(PostResponse(status=Status.failure, message=str(e)).model_dump()), 400
 
     generator = Generator.query.get(create_generation_job_request.generator_id)
 
     if not generator:
-        return jsonify(PostResponse(status="error", message="生成器不存在").model_dump()), 404
+        return jsonify(PostResponse(status=Status.failure, message="生成器不存在").model_dump()), 404
 
     new_generation_job = GenerationJob(
         project_id=project_id,
@@ -67,7 +67,7 @@ def create_generation_job(project_id):
     db.session.add(new_generation_job)
     db.session.commit()
 
-    return jsonify(PostResponse(status="success", message="生成任务已创建"))
+    return jsonify(PostResponse(status=Status.success, message="生成任务已创建"))
 
 
 @app.route('/projects/<int:project_id>/generation_job/<int:job_id>', methods=['POST'])
@@ -95,7 +95,7 @@ def generation_job_action(project_id, job_id):
         task = generate_dialogs.delay(job_id)
         generation_job.task_id = task.id
 
-    db.commit()
+    db.session.commit()
     return jsonify(PostResponse(status=Status.success, message='Correct').model_dump_json())
 
 

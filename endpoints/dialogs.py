@@ -56,9 +56,12 @@ def get_dialog(project_id):
 
 @app.route('/projects/<int:project_id>/dialog/<int:dialog_id>', methods=['GET'])
 def get_single_dialog(project_id, dialog_id):
-    dialog = db.query(Dialog).filter_by(project_id=project_id, id=dialog_id).first()
-    feedbacks = db.query(Feedback).filter_by(project_id=project_id, dialog_id=dialog_id).all()
+    print(type(db))
+    print(type(Dialog))
+    dialog = Dialog.query.filter_by(project_id=project_id, id=dialog_id).first()
+    feedbacks = Feedback.query.filter_by(project_id=project_id, dialog_id=dialog_id).all()
     comments = [feedback.comment for feedback in feedbacks if feedback.comment]
+    # todo: add user information
 
     if not dialog:
         return jsonify({"error": "Dialog not found"}), 404
@@ -76,8 +79,9 @@ def get_single_dialog(project_id, dialog_id):
         quality_counts=quality_counts,
         comments=comments,
         edited=dialog.edited,
-        unmarked=dialog.average_quality - 0 < 1e-8,
+        unmarked=len(feedbacks) == 0,
     )), 200
+
 
 
 @app.route('/projects/<int:project_id>/dialog/<int:dialog_id>', methods=['POST'])
@@ -87,17 +91,19 @@ def edit_dialog(project_id, dialog_id):
     except ValidationError as e:
         return jsonify({"error": str(e)}), 400
 
-    candidate = db.query(Dialog).filter_by(project_id=project_id, id=dialog_id).first()
+    dialog = Dialog.query.filter_by(project_id=project_id, id=dialog_id).first()
 
-    if not candidate:
+    if not dialog:
         return jsonify({"error": "Dialog not found"}), 404
     field = request_data.field
     content = request_data.content
 
-    if request_data.field in candidate.attrs:
-        new_attrs = deepcopy(candidate.attrs)
+    if request_data.field == 'content':
+        dialog.content = request_data.content
+    elif request_data.field in dialog.attrs:
+        new_attrs = deepcopy(dialog.attrs)
         new_attrs[field] = content
-        candidate.attrs = new_attrs
-    db.commit()
+        dialog.attrs = new_attrs
+    db.session.commit()
 
-    return jsonify(PostResponse(status=Status.success, message="Dialog added").model_dump())
+    return jsonify(PostResponse(status=Status.success, message="Dialog edited").model_dump())
