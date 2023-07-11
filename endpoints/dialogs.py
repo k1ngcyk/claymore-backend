@@ -7,7 +7,7 @@ from sqlalchemy import func
 from setup import app, db
 from models.validators import EditDialogRequest, PostResponse, Status
 from models.orms import Dialog, Feedback
-
+from collections import Counter
 
 @app.route('/projects/<int:project_id>/dialog', methods=['GET'])
 def get_dialog(project_id):
@@ -16,7 +16,7 @@ def get_dialog(project_id):
         filter_type = request.args.get('type')
         filter_value = request.args.get('value')
 
-        if filter_type != 'value' or filter_type != 'exists' or filter_type != 'all':
+        if filter_type not in ['value', 'exists', 'all']:
             return jsonify({"error": 'wrong type'}), 400
     except ValidationError as e:
         return jsonify({"error": str(e)}), 400
@@ -43,8 +43,13 @@ def get_dialog(project_id):
     else:
         return jsonify({'error': 'unknown filter'}), 400
     response_data = []
-    for candidate in dialogs:
-        response_data.append(candidate.model_dump())
+    for dialog in dialogs:
+        response_data.append(dict(
+            id=dialog.id,
+            content=dialog.content,
+            edited=dialog.edited,
+            source_id=dialog.source_id,
+        ))
 
     return jsonify({"dialogs": response_data})
 
@@ -54,7 +59,7 @@ def get_single_dialog(project_id, dialog_id):
     dialog = db.query(Dialog).filter_by(project_id=project_id, id=dialog_id).first()
     feedbacks = db.query(Feedback).filter_by(project_id=project_id, dialog_id=dialog_id).all()
     comments = [feedback.comment for feedback in feedbacks if feedback.comment]
-    from collections import Counter
+
     if not dialog:
         return jsonify({"error": "Dialog not found"}), 404
     quality_values = {

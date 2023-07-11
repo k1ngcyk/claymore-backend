@@ -22,7 +22,7 @@ def add_generator(project_id):
     try:
         add_generator_request = AddGeneratorRequest(**req_data)
     except ValueError as e:
-        return jsonify(PostResponse(status="error", message=str(e)).model_dump()), 400
+        return jsonify(PostResponse(status="error", message=str(e)).json()), 400
 
     new_generator = Generator(name=add_generator_request.name,
                               content=add_generator_request.content,

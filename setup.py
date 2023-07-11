@@ -1,18 +1,25 @@
 # 导入所需的库
+import os
+
 from celery import Celery
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 import openai
 from dotenv import load_dotenv
 
-openai.api_key = load_dotenv('OPENAI_API_KEY')
+load_dotenv()
+
+openai.api_key = os.getenv('OPENAI_API_KEY')
+
+
+class Config(object):
+    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL')
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+
 
 # 创建 Flask 应用实例
 app = Flask('data-augmenter')
-
-# 配置数据库 URI
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///example.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config.from_object(Config)
 
 celery_app = Celery('tasks')
 celery_app.config_from_object('celeryconfig')

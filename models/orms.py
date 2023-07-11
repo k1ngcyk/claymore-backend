@@ -43,13 +43,30 @@ class User(db.Model):
     password = Column(String)
 
 
+class GenerationJob(db.Model):
+    __tablename__ = 'generation_job'
+    id = Column(Integer, primary_key=True)
+    project_id = Column(Integer, ForeignKey('project.id'))
+    model_name = Column(String)
+    temperature = Column(Float)
+    tokens = Column(Integer)
+    generator_id = Column(Integer, ForeignKey('generator.id'))
+    name = Column(String)
+    created_at = Column(Date)
+    duration = Column(Time)
+    task_id = Column(String) # Celery task id
+    status = Column(Enum('Error', 'Running', 'Finished', 'Stopped', 'Waiting', name='GenerationJobStatus'), nullable=False)
+    generated_count = Column(Integer)
+    total_count = Column(Integer)
+    variables = Column(JSON)
+
 class Dialog(db.Model):
     __tablename__ = 'dialog'
     id = Column(Integer, primary_key=True)
     project_id = Column(Integer, ForeignKey('project.id'))
     content = Column(String)
     generation_job_id = Column(Integer, ForeignKey('generation_job.id'))
-    source_type = Column(Enum('User', 'Generator'), nullable=False)
+    source_type = Column(Enum('User', 'Generator', name='DialogSource'), nullable=False)
     source_id = Column(Integer)
     created_at = Column(Date)
     edited = Column(sqlalchemy.Boolean)
@@ -63,7 +80,7 @@ class Feedback(db.Model):
     dialog_id = Column(Integer, ForeignKey('dialog.id'), primary_key=True)
     created_at = Column(Date)
     comment = Column(String)
-    quality = Column(Enum('Low', 'Medium', 'High'))
+    quality = Column(Enum('Low', 'Medium', 'High', name='FeedbackQuality'))
     content = Column(db.JSON)
 
 
@@ -77,19 +94,4 @@ class Setting(db.Model):
     updated_at = Column(Date)
 
 
-class GenerationJob(db.Model):
-    __tablename__ = 'generation_job'
-    id = Column(Integer, primary_key=True)
-    project_id = Column(Integer, ForeignKey('project.id'), primary_key=True)
-    model_name = Column(String)
-    temperature = Column(Float)
-    tokens = Column(Integer)
-    generator_id = Column(Integer, ForeignKey('generator.id'))
-    name = Column(String)
-    created_at = Column(Date)
-    duration = Column(Time)
-    task_id = Column(String) # Celery task id
-    status = Column(Enum('Error', 'Running', 'Finished', 'Stopped', 'Waiting'), nullable=False)
-    generated_count = Column(Integer)
-    total_count = Column(Integer)
-    variables = Column(JSON)
+
