@@ -9,7 +9,7 @@ from models.validators import AddSettingRequest, PostResponse, EditSettingReques
 
 @app.route('/projects/<int:project_id>/settings', methods=['GET'])
 def get_settings(project_id):
-    settings = db.query(Setting).filter_by(project_id=project_id).all()
+    settings = Setting.query.filter_by(project_id=project_id).all()
 
     response_data = []
     for setting in settings:
@@ -46,7 +46,7 @@ def edit_setting(project_id, setting_id):
     except ValidationError as e:
         return jsonify({"error": str(e)}), 400
 
-    setting = db.query(Setting).filter_by(project_id=project_id, id=setting_id).first()
+    setting = Setting.query.filter_by(project_id=project_id, id=setting_id).first()
 
     if not setting:
         return jsonify({"error": "Setting not found"}), 404

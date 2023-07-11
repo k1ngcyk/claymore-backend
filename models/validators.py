@@ -1,5 +1,5 @@
 # Pydantic
-from datetime import datetime
+from datetime import datetime, time
 from typing import List, Optional, Union
 from pydantic import BaseModel
 from enum import Enum
@@ -55,14 +55,14 @@ class GenerationJobListResponse(BaseModel):
 
 class JobConfig(BaseModel):
     model: str
-    temperature: str
-    length: str
+    temperature: float
+    length: float
 
 
 class JobDetailResponse(BaseModel):
     progress: float
     token: int
-    duration: datetime
+    duration: int
     generator: List[str]
     config: JobConfig
 

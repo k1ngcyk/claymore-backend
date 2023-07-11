@@ -54,7 +54,7 @@ class GenerationJob(db.Model):
     tokens = Column(Integer)
     generator_id = Column(Integer, ForeignKey('generator.id'))
     name = Column(String)
-    created_at = Column(Date)
+    created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     duration = Column(Time)
     task_id = Column(String) # Celery task id
     status = Column(Enum('Error', 'Running', 'Finished', 'Stopped', 'Waiting', name='GenerationJobStatus'), nullable=False)

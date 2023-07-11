@@ -1,4 +1,5 @@
 import json
+from datetime import timedelta
 
 from flask import request, jsonify
 from jsons import ValidationError
@@ -22,10 +23,11 @@ def add_generator(project_id):
     try:
         add_generator_request = AddGeneratorRequest(**req_data)
     except ValueError as e:
-        return jsonify(PostResponse(status=Status.failure, message=str(e)).json()), 400
+        return jsonify(PostResponse(status=Status.failure, message=str(e)).model_dump()), 400
 
     new_generator = Generator(name=add_generator_request.name,
                               content=add_generator_request.content,
+                              user_id=add_generator_request.user_id,
                               project_id=project_id)
     db.session.add(new_generator)
     db.session.commit()
@@ -35,7 +37,7 @@ def add_generator(project_id):
 
 @app.route('/projects/<int:project_id>/generation_job/<int:id>/candidates', methods=['GET'])
 def get_generation_job_candidates(project_id, id):
-    candidates = db.query(Dialog).filter_by(project_id=project_id, generation_job_id=id).all()
+    candidates = Dialog.query.filter_by(project_id=project_id, generation_job_id=id).all()
 
     response_data = []
     for candidate in candidates:
@@ -77,7 +79,7 @@ def generation_job_action(project_id, job_id):
     except ValidationError as e:
         return jsonify({"error": str(e)}), 400
 
-    generation_job = db.query(GenerationJob).filter_by(project_id=project_id, id=job_id).first()
+    generation_job = GenerationJob.query.filter_by(project_id=project_id, id=job_id).first()
 
     if not generation_job:
         return jsonify({"error": "Generation job not found"}), 404
@@ -111,10 +113,11 @@ def get_all_generation_jobs(project_id):
         return jsonify({"status": str(e), "message": "filter parameter not found"}), 400
 
     if job_filter == 'all':
-        generation_jobs = db.query(GenerationJob).filter_by(project_id=project_id).all()
+        generation_jobs = GenerationJob.query.filter_by(project_id=project_id).all()
     elif job_filter == 'unfinished':
-        generation_jobs = db.query(GenerationJob).filter_by(project_id=project_id).filter(
-            GenerationJob.status == 'Running').all()
+        generation_jobs = GenerationJob.query \
+            .filter_by(project_id=project_id) \
+            .filter(GenerationJob.status.in_(['Running', 'Waiting'])).all()
     else:
         return jsonify({'status': 'error', 'message': 'unknown filter'}), 400
 
@@ -133,15 +136,19 @@ def get_all_generation_jobs(project_id):
 
 @app.route('/projects/<int:project_id>/generation_job/<int:job_id>', methods=['GET'])
 def get_generation_job_detail(project_id, job_id):
-    generation_job = db.query(GenerationJob).filter_by(project_id=project_id, id=job_id).first()
-    generator = db.query(Generator).get(generation_job.generator_id).first()
+    generation_job = GenerationJob.query.filter_by(project_id=project_id, id=job_id).first()
+    generator = Generator.query.get(generation_job.generator_id)
     if not generation_job:
         return jsonify({"error": "Generation job not found"}), 404
+
+    duration = generation_job.duration
+    duration_timedelta = timedelta(hours=duration.hour, minutes=duration.minute, seconds=duration.second)
+    duration_seconds = int(duration_timedelta.total_seconds())
 
     job_detail_response = JobDetailResponse(
         progress=get_job_progress(generation_job),
         token=generation_job.tokens,
-        duration=generation_job.duration,
+        duration=duration_seconds,
         generator=generator.content,
         config={
             "model": generation_job.model_name,
