@@ -18,9 +18,9 @@ class CandidateStatus(str, Enum):
 
 
 class GenerationJobActionType(str, Enum):
-    start = 'Start'
-    stop = 'Stop'
-    retry = 'Retry'
+    start = 'start'
+    stop = 'stop'
+    retry = 'retry'
 
 
 class PostResponse(BaseModel):

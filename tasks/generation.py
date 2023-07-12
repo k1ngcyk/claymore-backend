@@ -18,6 +18,7 @@ from openai.error import (
 
 
 def generate(prompt: str, model='gpt-3.5-turbo', temperature=0):
+
     answer = openai.ChatCompletion.create(
         model=model,
         messages=[
@@ -43,7 +44,7 @@ def get_new_duration(time_start: float,
     return new_duration
 
 
-@celery_app.task(bind=True, name='generate_dialogs')
+@celery_app.task(name='generate_dialogs')
 def generate_dialogs(job_id):
     job = db.query(GenerationJob).get(job_id)
     generator = db.query(Generator).filter_by(id=job.generator_id).first()
@@ -66,7 +67,6 @@ def generate_dialogs(job_id):
         return
 
     for _ in range(items_left):
-        # Make API call
         for attempt in range(retries):
             try:
                 if len(generator.content) == 1:

@@ -21,8 +21,10 @@ class Config(object):
 app = Flask('data-augmenter')
 app.config.from_object(Config)
 
-celery_app = Celery('tasks')
-celery_app.config_from_object('celeryconfig')
+celery_app = Celery('tasks',
+                    broker=os.getenv('RABBITMQ_URL'),
+                    include=['generate_dialogs'])
+
 
 # 初始化 SQLAlchemy
 db = SQLAlchemy(app)
