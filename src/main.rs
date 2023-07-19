@@ -4,6 +4,7 @@ use sqlx::postgres::PgPoolOptions;
 
 use claymore_backend::config::Config;
 use claymore_backend::http;
+use claymore_backend::queue;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -35,6 +36,9 @@ async fn main() -> anyhow::Result<()> {
     // This embeds database migrations in the application binary so we can ensure the database
     // is migrated correctly on startup
     sqlx::migrate!().run(&db).await?;
+
+    let mq = queue::make_connection().await;
+    queue::start_consumer(db.clone(), mq).await;
 
     // Finally, we spin up our API.
     http::serve(config, db).await?;

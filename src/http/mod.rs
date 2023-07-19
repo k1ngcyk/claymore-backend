@@ -1,6 +1,7 @@
 use crate::config::Config;
 use anyhow::Context;
 use axum::Router;
+use lapin::Connection;
 use serde_json::Value;
 use sqlx::PgPool;
 use std::{
@@ -45,6 +46,7 @@ use tower_http::trace::TraceLayer;
 pub(crate) struct ApiContext {
     config: Arc<Config>,
     db: PgPool,
+    // mq: Arc<Connection>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -82,6 +84,7 @@ pub async fn serve(config: Config, db: PgPool) -> anyhow::Result<()> {
     let api_context = ApiContext {
         config: Arc::new(config),
         db,
+        // mq: Arc::new(mq),
     };
 
     let app = api_router(api_context);

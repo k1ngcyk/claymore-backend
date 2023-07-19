@@ -2,6 +2,7 @@ use crate::http::extractor::AuthUser;
 use crate::http::types::Timestamptz;
 use crate::http::ApiContext;
 use crate::http::{Error, Result};
+use crate::queue;
 use axum::extract::{Query, State};
 use axum::routing::{get, post};
 use axum::{Json, Router};
@@ -121,6 +122,24 @@ async fn handle_new_job(
     .await?;
 
     // TODO: MQ
+    let connection = queue::make_connection().await;
+    let channel = connection.create_channel().await.unwrap();
+    let result = channel
+        .basic_publish(
+            "",
+            "claymore_job_queue",
+            lapin::options::BasicPublishOptions::default(),
+            json!({
+                "job_id": job.job_id,
+            })
+            .to_string()
+            .as_bytes(),
+            lapin::BasicProperties::default(),
+        )
+        .await
+        .unwrap()
+        .await
+        .unwrap();
 
     Ok(Json(CommonResponse {
         code: 200,
