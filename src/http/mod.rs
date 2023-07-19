@@ -13,6 +13,13 @@ mod error;
 mod extractor;
 mod types;
 
+mod characters;
+mod comments;
+mod datadrops;
+mod generators;
+mod jobs;
+mod projects;
+mod teams;
 mod users;
 
 pub use error::{Error, ResultExt};
@@ -90,6 +97,13 @@ pub async fn serve(config: Config, db: PgPool) -> anyhow::Result<()> {
 fn api_router(api_context: ApiContext) -> Router {
     Router::new()
         .merge(users::router())
+        .merge(teams::router())
+        .merge(projects::router())
+        .merge(generators::router())
+        .merge(jobs::router())
+        .merge(characters::router())
+        .merge(datadrops::router())
+        .merge(comments::router())
         // Enables logging. Use `RUST_LOG=tower_http=debug`
         .layer(TraceLayer::new_for_http())
         .with_state(api_context)
