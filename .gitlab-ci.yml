@@ -1,15 +1,19 @@
-image: docker:latest
+image: docker:20.10.16
 
 services:
-  - docker:dind
+  - docker:20.10.16-dind
 
 stages:
   - build
   - deploy
 
+variables:
+  DOCKER_TLS_CERTDIR: "/certs"
+
 before_script:
   - 'if [ -z "$CI_COMMIT_TAG" ]; then export IMAGE_TAG="$CI_COMMIT_SHORT_SHA"; else export IMAGE_TAG="$CI_COMMIT_TAG-$CI_COMMIT_SHORT_SHA"; fi'
   - "export IMAGE_NAME=$HARBOR_HOST/$HARBOR_PROJECT/$CI_PROJECT_NAME:$IMAGE_TAG"
+  - docker info
 
 build:
   stage: build
