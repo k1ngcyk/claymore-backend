@@ -10,6 +10,10 @@ RUN cargo build --release
 
 FROM debian:bookworm-slim
 
-COPY --from=builder /app/target/release/claymore_backend /usr/local/bin/claymore_backend
+RUN mkdir -p /opt/fluxus
 
-CMD ["claymore_backend"]
+COPY migrations /opt/fluxus/migrations
+
+COPY --from=builder /app/target/release/claymore_backend /opt/fluxus/claymore_backend
+
+CMD ["/opt/fluxus/claymore_backend"]
