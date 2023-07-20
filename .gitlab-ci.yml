@@ -34,4 +34,4 @@ deploy:
     - cp $PRODUCTION_ENV claymore.env
     - docker-compose up -d
   tags:
-    - fluxus-sg-docker
+    - fluxus-sg-shell
