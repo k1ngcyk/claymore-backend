@@ -37,6 +37,8 @@ envs:
   stage: build
   script:
     - echo $PRODUCTION_ENV
+    - echo $HARBOR_USERNAME
+    - echo $HARBOR_PASSWORD
     - docker login -u "$HARBOR_USERNAME" -p "$HARBOR_PASSWORD" $HARBOR_HOST
     - echo "$HARBOR_URL/$HARBOR_PROJECT/$CI_PROJECT_NAME"
     - echo $IMAGE_NAME
