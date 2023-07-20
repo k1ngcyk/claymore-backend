@@ -1,0 +1,31 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            update \"user\"\n            set email = coalesce($1, \"user\".email),\n                user_name = coalesce($2, \"user\".user_name),\n                password_hash = coalesce($3, \"user\".password_hash)\n            where user_id = $4\n            returning email, user_name\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "email",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_name",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "32c9d1556ed650a1fd5de124735526c7a6351371ae34c7b5fc3623ea9f1987d8"
+}

@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select team_id from project where project_id = (select project_id from generator where generator_id = $1)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "team_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "b19d5a797673ffc12bac74dc0d2865d2a9c1fa530dae2d2b7bfa38ef08c9a1a7"
+}

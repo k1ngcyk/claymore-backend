@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select owner_id from team where team_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "owner_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "295b78f368e42378561d6952bfcc8870f7aeea2ae0bf669b0adf0586e01d2327"
+}

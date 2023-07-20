@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select team_id from project where project_id = (select project_id from character where character_id = $1)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "team_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "4dd22ff74b0c3de72b64c602648a00a006ef6660f0a0890b899dcfec15678b35"
+}

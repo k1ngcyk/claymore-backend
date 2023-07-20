@@ -1,0 +1,70 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select\n            generator_id,\n            generator_name,\n            prompt_chain,\n            model_name,\n            temperature,\n            word_count,\n            project_id,\n            created_at \"created_at: Timestamptz\",\n            updated_at \"updated_at: Timestamptz\"\n        from generator where project_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "generator_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "generator_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "prompt_chain",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 3,
+        "name": "model_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "temperature",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 5,
+        "name": "word_count",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "project_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at: Timestamptz",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "updated_at: Timestamptz",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "2d2da5fbae7262953ed30271360b3ebf731d9c80e2c845bd44cc27e76cd5add4"
+}

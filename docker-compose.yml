@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  claymore-api:
+    image: ${IMAGE_NAME}
+    ports:
+      - "5000:8080"
+    env_file:
+      - claymore.env
+    networks:
+      - claymore_backend_network
+    depends_on:
+      - claymore-db
+      - claymore-rabbitmq
+
+  claymore-db:
+    image: postgres:latest
+    volumes:
+      - claymore_backend_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=fluxus
+      - POSTGRES_PASSWORD=fluxus
+      - POSTGRES_DB=claymore_backend
+    networks:
+      - claymore_backend_network
+
+  claymore-rabbitmq:
+    image: rabbitmq:3-management
+    networks:
+      - claymore_backend_network
+
+networks:
+  claymore_backend_network:
+    driver: bridge
+
+volumes:
+  claymore_backend_data:

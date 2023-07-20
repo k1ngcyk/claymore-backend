@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select team_id from project where project_id = (select project_id from job where job_id = $1)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "team_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "1ae3fa5cb9571a3a0837fcb3fca4e94178296acb56a776135c72e0d775bc2a9c"
+}

@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select prompt_chain from generator where generator_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "prompt_chain",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "a6acae95c65e7b1e48f82d551c10049e3afec2c60973ba4a2f04f446b68ee88d"
+}
