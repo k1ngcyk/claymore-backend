@@ -35,7 +35,7 @@ async fn main() -> anyhow::Result<()> {
 
     // This embeds database migrations in the application binary so we can ensure the database
     // is migrated correctly on startup
-    sqlx::migrate!().run(&db).await?;
+    sqlx::migrate!("./migrations").run(&db).await?;
 
     let mq = queue::make_connection(&config.rabbitmq_url).await;
     queue::start_consumer(db.clone(), mq).await;

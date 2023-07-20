@@ -6,6 +6,8 @@ COPY . .
 
 ENV SQLX_OFFLINE=true
 
+RUN cargo install sqlx-cli --features postgres
+
 RUN cargo build --release
 
 FROM debian:bookworm-slim
