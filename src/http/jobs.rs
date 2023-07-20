@@ -122,7 +122,7 @@ async fn handle_new_job(
     .await?;
 
     // TODO: MQ
-    let connection = queue::make_connection().await;
+    let connection = queue::make_connection(&ctx.config.rabbitmq_url).await;
     let channel = connection.create_channel().await.unwrap();
     let result = channel
         .basic_publish(

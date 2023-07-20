@@ -15,4 +15,7 @@ pub struct Config {
 
     #[clap(long, env)]
     pub config_file: String,
+
+    #[clap(long, env)]
+    pub rabbitmq_url: String,
 }

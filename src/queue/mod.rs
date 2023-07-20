@@ -8,8 +8,8 @@ use sqlx::PgPool;
 
 mod executor;
 
-pub async fn make_connection() -> Connection {
-    let uri: &str = "amqp://localhost:5672";
+pub async fn make_connection(url: &String) -> Connection {
+    let uri = url;
     let options = ConnectionProperties::default()
         // Use tokio executor and reactor.
         // At the moment the reactor is only available for unix.

@@ -37,7 +37,7 @@ async fn main() -> anyhow::Result<()> {
     // is migrated correctly on startup
     sqlx::migrate!().run(&db).await?;
 
-    let mq = queue::make_connection().await;
+    let mq = queue::make_connection(&config.rabbitmq_url).await;
     queue::start_consumer(db.clone(), mq).await;
 
     // Finally, we spin up our API.
