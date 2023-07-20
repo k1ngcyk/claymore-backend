@@ -4,7 +4,7 @@ services:
   claymore-api:
     image: ${IMAGE_NAME}
     ports:
-      - "5000:8080"
+      - "9000:8080"
     env_file:
       - claymore.env
     networks:
