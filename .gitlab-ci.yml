@@ -9,7 +9,7 @@ stages:
 
 before_script:
   - 'if [ -z "$CI_COMMIT_TAG" ]; then export IMAGE_TAG="$CI_COMMIT_SHORT_SHA"; else export IMAGE_TAG="$CI_COMMIT_TAG-$CI_COMMIT_SHORT_SHA"; fi'
-  - "export IMAGE_NAME=registry.mydomain.com/myproject:$IMAGE_TAG"
+  - "export IMAGE_NAME=$HARBOR_URL/$HARBOR_PROJECT/$CI_PROJECT_NAME:$IMAGE_TAG"
 
 build:
   stage: build
@@ -37,10 +37,9 @@ envs:
   stage: build
   script:
     - echo $PRODUCTION_ENV
-    - echo
-    - echo $HARBOR_URL
-    - echo $HARBOR_PROJECT
-    - echo $HARBOR_OCI
+    - docker login -u "$HARBOR_USERNAME" -p "$HARBOR_PASSWORD" $HARBOR_HOST
+    - echo "$HARBOR_URL/$HARBOR_PROJECT/$CI_PROJECT_NAME"
+    - echo $IMAGE_NAME
   tags:
     - fluxus-sg-docker
   when: manual
