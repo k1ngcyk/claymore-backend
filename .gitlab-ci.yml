@@ -32,6 +32,6 @@ deploy:
     - docker pull $IMAGE_NAME
     - echo "IMAGE_NAME=$IMAGE_NAME" > .env
     - cp $PRODUCTION_ENV claymore.env
-    - docker-compose up -d
+    - docker compose up -d
   tags:
     - fluxus-sg-shell
