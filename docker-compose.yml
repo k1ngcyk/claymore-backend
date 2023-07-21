@@ -4,7 +4,7 @@ services:
   claymore-api:
     image: ${IMAGE_NAME}
     ports:
-      - "9000:8080"
+      - "127.0.0.1:9000:8080"
     env_file:
       - claymore.env
     networks:
@@ -18,7 +18,7 @@ services:
     volumes:
       - claymore_backend_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     environment:
       - POSTGRES_USER=fluxus
       - POSTGRES_PASSWORD=fluxus
