@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "insert into datadrop (job_id, datadrop_name, datadrop_content, project_id) values ($1, $2, $3, $4)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7262901d8be15229a0e9eda254fd75028693e98bd7f1d5d420bf1929aa9686b0"
+}

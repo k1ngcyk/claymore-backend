@@ -56,6 +56,18 @@ struct DatadropFromSql {
     updated_at: Option<Timestamptz>,
 }
 
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CommentFromSql {
+    comment_id: Uuid,
+    user_id: Uuid,
+    datadrop_id: Uuid,
+    comment_content: String,
+    created_at: Timestamptz,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    updated_at: Option<Timestamptz>,
+}
+
 async fn handle_get_datadrop_info(
     auth_user: AuthUser,
     ctx: State<ApiContext>,
@@ -103,11 +115,27 @@ async fn handle_get_datadrop_info(
     .fetch_one(&ctx.db)
     .await?;
 
+    let comment = sqlx::query_as!(
+        CommentFromSql,
+        r#"select
+            comment_id,
+            user_id,
+            datadrop_id,
+            comment_content,
+            created_at "created_at: Timestamptz",
+            updated_at "updated_at: Timestamptz"
+        from comment where datadrop_id = $1"#,
+        req.datadrop_id
+    )
+    .fetch_all(&ctx.db)
+    .await?;
+
     Ok(Json(CommonResponse {
         code: 200,
         message: "success".to_string(),
         data: json!({
             "datadrop": datadrop,
+            "comment": comment,
         }),
     }))
 }

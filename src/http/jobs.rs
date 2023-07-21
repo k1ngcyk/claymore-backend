@@ -151,6 +151,7 @@ async fn handle_new_job(
         &channel,
         json!({
             "job_id": job.job_id,
+            "generator_id": job.generator_id,
         }),
     )
     .await;

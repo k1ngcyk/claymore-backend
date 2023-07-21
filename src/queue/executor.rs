@@ -50,6 +50,11 @@ pub async fn execute_job(db: PgPool, delivery: &Delivery) {
     .unwrap()
     .prompt_chain;
     let prompts = prompt_chain["prompts"].as_array().unwrap();
+    let project_id = sqlx::query!(r#"select project_id from job where job_id = $1"#, job_id)
+        .fetch_one(&db)
+        .await
+        .unwrap()
+        .project_id;
     for _ in finished_count..=target_count {
         let job_status = sqlx::query!(r#"select job_status from job where job_id = $1"#, job_id)
             .fetch_one(&db)
@@ -85,10 +90,11 @@ pub async fn execute_job(db: PgPool, delivery: &Delivery) {
             response = output.to_string();
         }
         let result = sqlx::query!(
-            r#"insert into datadrop (job_id, datadrop_name, datadrop_content) values ($1, $2, $3)"#,
+            r#"insert into datadrop (job_id, datadrop_name, datadrop_content, project_id) values ($1, $2, $3, $4)"#,
             job_id,
             format!("Data {}", job_id),
-            response
+            response,
+            project_id
         )
         .execute(&db)
         .await
