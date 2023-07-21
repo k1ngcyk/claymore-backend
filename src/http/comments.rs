@@ -11,12 +11,8 @@ use uuid::Uuid;
 use crate::http::CommonResponse;
 
 pub(crate) fn router() -> Router<ApiContext> {
-    Router::new()
-        .route(
-            "/comment",
-            post(handle_new_comment).get(handle_get_comment_info),
-        )
-        .route("/comment/list", get(handle_get_comment_list))
+    Router::new().route("/comment", post(handle_new_comment))
+    // .route("/comment/list", get(handle_get_comment_list))
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -76,7 +72,7 @@ async fn handle_new_comment(
     .await?
     .team_id;
 
-    let member_record = sqlx::query!(
+    let _member_record = sqlx::query!(
         // language=PostgreSQL
         r#"select user_level from team_member where team_id = $1 and user_id = $2"#,
         team_id,
@@ -102,31 +98,5 @@ async fn handle_new_comment(
         data: json!({
             "commentId": comment.comment_id,
         }),
-    }))
-}
-
-async fn handle_get_comment_info(
-    auth_user: AuthUser,
-    ctx: State<ApiContext>,
-    Query(req): Query<CommentInfoRequest>,
-) -> Result<Json<CommonResponse>> {
-    // TODO
-    Ok(Json(CommonResponse {
-        code: 200,
-        message: "success".to_string(),
-        data: json!({}),
-    }))
-}
-
-async fn handle_get_comment_list(
-    auth_user: AuthUser,
-    ctx: State<ApiContext>,
-    Query(req): Query<CommentListRequest>,
-) -> Result<Json<CommonResponse>> {
-    // TODO
-    Ok(Json(CommonResponse {
-        code: 200,
-        message: "success".to_string(),
-        data: json!({}),
     }))
 }

@@ -12,7 +12,7 @@ use crate::http::CommonResponse;
 
 pub(crate) fn router() -> Router<ApiContext> {
     Router::new()
-        .route("/team", post(handle_new_team).get(handle_get_team_info))
+        .route("/team", get(handle_get_team_info).post(handle_new_team))
         .route("/team/invite", post(handle_team_invite))
 }
 

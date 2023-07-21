@@ -11,8 +11,9 @@ use uuid::Uuid;
 use crate::http::CommonResponse;
 
 pub(crate) fn router() -> Router<ApiContext> {
-    Router::new().route("/project", post(handle_new_project))
-    // .route("/project/list", get(handle_get_project_list))
+    Router::new()
+        .route("/project", post(handle_new_project))
+        .route("/project/list", get(handle_get_project_list))
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -92,6 +93,49 @@ async fn handle_new_project(
             "project_id": project.project_id,
             "created_at": project.created_at,
             "updated_at": project.updated_at,
+        }),
+    }))
+}
+
+async fn handle_get_project_list(
+    auth_user: AuthUser,
+    ctx: State<ApiContext>,
+    Query(req): Query<ProjectListRequest>,
+) -> Result<Json<CommonResponse>> {
+    let member_record = sqlx::query!(
+        // language=PostgreSQL
+        r#"select user_level from team_member where team_id = $1 and user_id = $2"#,
+        req.team_id,
+        auth_user.user_id
+    )
+    .fetch_optional(&ctx.db)
+    .await?
+    .ok_or_else(|| Error::Unauthorized)?;
+
+    if member_record.user_level != 0 {
+        return Err(Error::Unauthorized);
+    }
+
+    let projects = sqlx::query_as!(
+        ProjectFromSql,
+        // language=PostgreSQL
+        r#"select
+            project_id,
+            project_name,
+            team_id,
+            created_at "created_at: Timestamptz",
+            updated_at "updated_at: Timestamptz"
+        from project where team_id = $1"#,
+        req.team_id
+    )
+    .fetch_all(&ctx.db)
+    .await?;
+
+    Ok(Json(CommonResponse {
+        code: 0,
+        message: "success".to_string(),
+        data: json!({
+            "projects": projects,
         }),
     }))
 }
