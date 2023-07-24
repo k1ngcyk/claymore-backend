@@ -16,8 +16,10 @@ mod types;
 mod characters;
 mod comments;
 mod datadrops;
+mod feedback;
 mod generators;
 mod jobs;
+mod profile;
 mod projects;
 mod teams;
 mod users;
@@ -99,11 +101,13 @@ fn api_router(api_context: ApiContext) -> Router {
         .merge(users::router())
         .merge(teams::router())
         .merge(projects::router())
+        .merge(profile::router())
         .merge(generators::router())
         .merge(jobs::router())
         .merge(characters::router())
         .merge(datadrops::router())
         .merge(comments::router())
+        .merge(feedback::router())
         // Enables logging. Use `RUST_LOG=tower_http=debug`
         .layer(TraceLayer::new_for_http())
         .with_state(api_context)

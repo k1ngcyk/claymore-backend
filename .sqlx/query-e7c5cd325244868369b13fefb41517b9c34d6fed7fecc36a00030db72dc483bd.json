@@ -1,0 +1,85 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select\n            datadrop_id,\n            datadrop_name,\n            datadrop_content,\n            datadrop.job_id,\n            datadrop.project_id,\n            extra_data,\n            job.job_name,\n            generator.generator_id,\n            generator_name,\n            datadrop.created_at \"created_at: Timestamptz\",\n            datadrop.updated_at \"updated_at: Timestamptz\"\n        from datadrop\n        left join job on datadrop.job_id = job.job_id\n        left join generator on job.generator_id = generator.generator_id\n        where datadrop.project_id = $1 order by $2 desc limit $3 offset $4",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "datadrop_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "datadrop_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "datadrop_content",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "job_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "project_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 5,
+        "name": "extra_data",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 6,
+        "name": "job_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "generator_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 8,
+        "name": "generator_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at: Timestamptz",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "updated_at: Timestamptz",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "e7c5cd325244868369b13fefb41517b9c34d6fed7fecc36a00030db72dc483bd"
+}

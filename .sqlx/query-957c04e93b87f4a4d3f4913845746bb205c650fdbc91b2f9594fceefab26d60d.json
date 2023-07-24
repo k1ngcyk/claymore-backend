@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select\n            job_id,\n            job_name,\n            project_id,\n            generator_id,\n            target_count,\n            job_status,\n            prompt_chain,\n            temperature,\n            word_count,\n            created_at \"created_at: Timestamptz\",\n            updated_at \"updated_at: Timestamptz\"\n        from job where project_id = $1",
+  "query": "insert into job (project_id, job_name, generator_id, target_count) values ($1, $2, $3, $4) returning\n            job_id,\n            job_name,\n            project_id,\n            generator_id,\n            target_count,\n            job_status \"job_status: JobStatus\",\n            prompt_chain,\n            temperature,\n            word_count,\n            created_at \"created_at: Timestamptz\",\n            updated_at \"updated_at: Timestamptz\"\n        ",
   "describe": {
     "columns": [
       {
@@ -30,7 +30,7 @@
       },
       {
         "ordinal": 5,
-        "name": "job_status",
+        "name": "job_status: JobStatus",
         "type_info": "Int4"
       },
       {
@@ -61,7 +61,10 @@
     ],
     "parameters": {
       "Left": [
-        "Uuid"
+        "Uuid",
+        "Text",
+        "Uuid",
+        "Int4"
       ]
     },
     "nullable": [
@@ -78,5 +81,5 @@
       true
     ]
   },
-  "hash": "69cba96ff0a417af7b6f553508cddf992e8b9b6a87afc6c5d948c0ecc75288d0"
+  "hash": "957c04e93b87f4a4d3f4913845746bb205c650fdbc91b2f9594fceefab26d60d"
 }

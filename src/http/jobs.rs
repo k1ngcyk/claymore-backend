@@ -6,6 +6,7 @@ use crate::queue;
 use axum::extract::{Query, State};
 use axum::routing::{get, post};
 use axum::{Json, Router};
+use log::info;
 use serde_json::json;
 use uuid::Uuid;
 
@@ -13,7 +14,7 @@ use crate::http::CommonResponse;
 
 pub(crate) fn router() -> Router<ApiContext> {
     Router::new()
-        .route("/job", post(handle_new_job))
+        .route("/job", post(handle_new_job).get(handle_get_job_info))
         .route("/job/list", get(handle_get_job_list))
         .route("/job/operate", post(handle_operate_job))
         .route("/job/candidate", get(handle_get_job_candidate))
@@ -22,6 +23,22 @@ pub(crate) fn router() -> Router<ApiContext> {
 #[derive(serde::Serialize, serde::Deserialize)]
 struct JobBody<T> {
     job: T,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, sqlx::Type, PartialEq, Debug)]
+#[repr(i32)]
+pub enum JobStatus {
+    Pending,
+    Running,
+    Finished,
+    Paused,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, sqlx::Type, PartialEq, Debug)]
+#[repr(i32)]
+enum JobOperation {
+    Start,
+    Pause,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -50,7 +67,7 @@ struct JobListRequest {
 #[serde(rename_all = "camelCase")]
 struct JobOperateRequest {
     job_id: Uuid,
-    job_status: i32,
+    job_operation: JobOperation,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -68,13 +85,33 @@ struct JobFromSql {
     #[serde(skip_serializing_if = "Option::is_none")]
     generator_id: Option<Uuid>,
     target_count: i32,
-    job_status: i32,
+    job_status: JobStatus,
     prompt_chain: Option<serde_json::Value>,
     temperature: Option<f64>,
     word_count: Option<i32>,
     created_at: Timestamptz,
     #[serde(skip_serializing_if = "Option::is_none")]
     updated_at: Option<Timestamptz>,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct JobFullFromSql {
+    job_id: Uuid,
+    job_name: String,
+    project_id: Uuid,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    generator_id: Option<Uuid>,
+    target_count: i32,
+    job_status: JobStatus,
+    prompt_chain: Option<serde_json::Value>,
+    temperature: Option<f64>,
+    word_count: Option<i32>,
+    created_at: Timestamptz,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    updated_at: Option<Timestamptz>,
+    generator_name: String,
+    finished_count: Option<i64>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -129,7 +166,7 @@ async fn handle_new_job(
             project_id,
             generator_id,
             target_count,
-            job_status,
+            job_status "job_status: JobStatus",
             prompt_chain,
             temperature,
             word_count,
@@ -145,8 +182,7 @@ async fn handle_new_job(
     .await?;
 
     // TODO: MQ
-    let connection = queue::make_connection(&ctx.config.rabbitmq_url).await;
-    let channel = connection.create_channel().await.unwrap();
+    let channel = queue::make_channel(&ctx.config.rabbitmq_url).await;
     let _result = queue::publish_message(
         &channel,
         json!({
@@ -197,7 +233,7 @@ async fn handle_get_job_list(
             project_id,
             generator_id,
             target_count,
-            job_status,
+            job_status "job_status: JobStatus",
             prompt_chain,
             temperature,
             word_count,
@@ -245,14 +281,67 @@ async fn handle_operate_job(
         return Err(Error::Unauthorized);
     }
 
-    sqlx::query!(
+    let current_status = sqlx::query!(
         // language=PostgreSQL
-        r#"update job set job_status = $1 where job_id = $2"#,
-        req.job.job_status,
+        r#"select job_status "job_status: JobStatus"
+        from job where job_id = $1"#,
         req.job.job_id
     )
-    .execute(&ctx.db)
-    .await?;
+    .fetch_one(&ctx.db)
+    .await?
+    .job_status;
+
+    if req.job.job_operation == JobOperation::Start {
+        if current_status != JobStatus::Paused {
+            return Err(Error::unprocessable_entity([
+                ("jobOperation", "invalid job operation"),
+                ("jobStatus", "This job is running or finished"),
+            ]));
+        } else {
+            sqlx::query!(
+                // language=PostgreSQL
+                r#"update job set job_status = $1 where job_id = $2"#,
+                JobStatus::Pending as i32,
+                req.job.job_id
+            )
+            .execute(&ctx.db)
+            .await?;
+
+            let generator_id = sqlx::query!(
+                // language=PostgreSQL
+                r#"select generator_id from job where job_id = $1"#,
+                req.job.job_id
+            )
+            .fetch_one(&ctx.db)
+            .await?
+            .generator_id;
+
+            queue::publish_message(
+                &queue::make_channel(&ctx.config.rabbitmq_url).await,
+                json!({
+                    "job_id": req.job.job_id,
+                    "generator_id": generator_id,
+                }),
+            )
+            .await;
+        }
+    } else if req.job.job_operation == JobOperation::Pause {
+        if current_status == JobStatus::Finished || current_status == JobStatus::Paused {
+            return Err(Error::unprocessable_entity([
+                ("jobOperation", "invalid job operation"),
+                ("jobStatus", "This job is finished or paused"),
+            ]));
+        } else {
+            sqlx::query!(
+                // language=PostgreSQL
+                r#"update job set job_status = $1 where job_id = $2"#,
+                JobStatus::Paused as i32,
+                req.job.job_id
+            )
+            .execute(&ctx.db)
+            .await?;
+        }
+    }
 
     Ok(Json(CommonResponse {
         code: 200,
@@ -307,6 +396,63 @@ async fn handle_get_job_candidate(
         message: "success".to_string(),
         data: json!({
             "candidates": candidates,
+        }),
+    }))
+}
+
+async fn handle_get_job_info(
+    auth_user: AuthUser,
+    ctx: State<ApiContext>,
+    Query(req): Query<JobInfoRequest>,
+) -> Result<Json<CommonResponse>> {
+    let team_id = sqlx::query!(
+        r#"select team_id from project where project_id = (select project_id from job where job_id = $1)"#,
+        req.job_id
+    )
+    .fetch_one(&ctx.db)
+    .await?
+    .team_id;
+
+    let _member_record = sqlx::query!(
+        // language=PostgreSQL
+        r#"select user_level from team_member where team_id = $1 and user_id = $2"#,
+        team_id,
+        auth_user.user_id
+    )
+    .fetch_optional(&ctx.db)
+    .await?
+    .ok_or_else(|| Error::Unauthorized)?;
+
+    let job = sqlx::query_as!(
+        JobFullFromSql,
+        // language=PostgreSQL
+        r#"select
+            job_id,
+            job_name,
+            job.project_id,
+            job.generator_id,
+            target_count,
+            job_status "job_status: JobStatus",
+            generator.prompt_chain,
+            generator.temperature,
+            generator.word_count,
+            generator.generator_name,
+            (select count(*) from datadrop where job_id = $1 and datadrop_content is not null) as finished_count,
+            job.created_at "created_at: Timestamptz",
+            job.updated_at "updated_at: Timestamptz"
+        from job
+        left join generator on job.generator_id = generator.generator_id
+        where job_id = $1"#,
+        req.job_id
+    )
+    .fetch_one(&ctx.db)
+    .await?;
+
+    Ok(Json(CommonResponse {
+        code: 200,
+        message: "success".to_string(),
+        data: json!({
+            "job": job,
         }),
     }))
 }

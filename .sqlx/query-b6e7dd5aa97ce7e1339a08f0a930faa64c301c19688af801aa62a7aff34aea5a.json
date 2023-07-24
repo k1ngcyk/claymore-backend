@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "insert into job (project_id, job_name, generator_id, target_count) values ($1, $2, $3, $4) returning\n            job_id,\n            job_name,\n            project_id,\n            generator_id,\n            target_count,\n            job_status,\n            prompt_chain,\n            temperature,\n            word_count,\n            created_at \"created_at: Timestamptz\",\n            updated_at \"updated_at: Timestamptz\"\n        ",
+  "query": "select\n            job_id,\n            job_name,\n            job.project_id,\n            job.generator_id,\n            target_count,\n            job_status \"job_status: JobStatus\",\n            generator.prompt_chain,\n            generator.temperature,\n            generator.word_count,\n            generator.generator_name,\n            (select count(*) from datadrop where job_id = $1 and datadrop_content is not null) as finished_count,\n            job.created_at \"created_at: Timestamptz\",\n            job.updated_at \"updated_at: Timestamptz\"\n        from job\n        left join generator on job.generator_id = generator.generator_id\n        where job_id = $1",
   "describe": {
     "columns": [
       {
@@ -30,7 +30,7 @@
       },
       {
         "ordinal": 5,
-        "name": "job_status",
+        "name": "job_status: JobStatus",
         "type_info": "Int4"
       },
       {
@@ -50,21 +50,28 @@
       },
       {
         "ordinal": 9,
+        "name": "generator_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "finished_count",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 11,
         "name": "created_at: Timestamptz",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 10,
+        "ordinal": 12,
         "name": "updated_at: Timestamptz",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid",
-        "Text",
-        "Uuid",
-        "Int4"
+        "Uuid"
       ]
     },
     "nullable": [
@@ -74,12 +81,14 @@
       true,
       false,
       false,
-      true,
-      true,
-      true,
+      false,
+      false,
+      false,
+      false,
+      null,
       false,
       true
     ]
   },
-  "hash": "93e3deab4375b8f2581c8da0794807591d5ca91eb01aef3a0d221f178eacd6a4"
+  "hash": "b6e7dd5aa97ce7e1339a08f0a930faa64c301c19688af801aa62a7aff34aea5a"
 }

@@ -1,27 +1,27 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select\n            comment_id,\n            user_id,\n            datadrop_id,\n            comment_content,\n            created_at \"created_at: Timestamptz\",\n            updated_at \"updated_at: Timestamptz\"\n        from comment where datadrop_id = $1",
+  "query": "select\n            team_id,\n            team_name,\n            owner_id,\n            team_level,\n            created_at \"created_at: Timestamptz\",\n            updated_at \"updated_at: Timestamptz\"\n        from team where owner_id = $1",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "comment_id",
+        "name": "team_id",
         "type_info": "Uuid"
       },
       {
         "ordinal": 1,
-        "name": "user_id",
-        "type_info": "Uuid"
+        "name": "team_name",
+        "type_info": "Text"
       },
       {
         "ordinal": 2,
-        "name": "datadrop_id",
+        "name": "owner_id",
         "type_info": "Uuid"
       },
       {
         "ordinal": 3,
-        "name": "comment_content",
-        "type_info": "Text"
+        "name": "team_level",
+        "type_info": "Int4"
       },
       {
         "ordinal": 4,
@@ -48,5 +48,5 @@
       true
     ]
   },
-  "hash": "c2efaf1e7aac57ddd6f35384b0c98cadab7282f2b7dffb7aa199d9e6204e0324"
+  "hash": "0a28c0f4311572b53233320506230bccccad74d0744c2ba18c5b02e5a38edceb"
 }

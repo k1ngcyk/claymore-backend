@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select\n            datadrop_id,\n            datadrop_name,\n            datadrop_content,\n            job_id,\n            project_id,\n            extra_data,\n            created_at \"created_at: Timestamptz\",\n            updated_at \"updated_at: Timestamptz\"\n        from datadrop where project_id = $1",
+  "query": "update datadrop set datadrop_content = $1 where datadrop_id = $2 returning\n        datadrop_id,\n        datadrop_name,\n        datadrop_content,\n        job_id,\n        project_id,\n        extra_data,\n        created_at \"created_at: Timestamptz\",\n        updated_at \"updated_at: Timestamptz\"\n        ",
   "describe": {
     "columns": [
       {
@@ -46,6 +46,7 @@
     ],
     "parameters": {
       "Left": [
+        "Text",
         "Uuid"
       ]
     },
@@ -60,5 +61,5 @@
       true
     ]
   },
-  "hash": "3236ab36f0c1353f873387c417fc6f49a0df110b9d6bf8aea208769eecdba60d"
+  "hash": "4a6932bbccb9531cc5fd68c25f0aad235af46974f6d93c0e3ccbccd9dbf06690"
 }

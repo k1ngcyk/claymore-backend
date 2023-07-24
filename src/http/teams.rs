@@ -14,6 +14,7 @@ pub(crate) fn router() -> Router<ApiContext> {
     Router::new()
         .route("/team", get(handle_get_team_info).post(handle_new_team))
         .route("/team/invite", post(handle_team_invite))
+        .route("/team/list", get(handle_get_team_list))
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -155,5 +156,34 @@ async fn handle_team_invite(
         code: 200,
         message: "success".to_string(),
         data: json!({}),
+    }))
+}
+
+async fn handle_get_team_list(
+    auth_user: AuthUser,
+    ctx: State<ApiContext>,
+) -> Result<Json<CommonResponse>> {
+    let teams = sqlx::query_as!(
+        TeamFromSql,
+        // language=PostgreSQL
+        r#"select
+            team_id,
+            team_name,
+            owner_id,
+            team_level,
+            created_at "created_at: Timestamptz",
+            updated_at "updated_at: Timestamptz"
+        from team where owner_id = $1"#,
+        auth_user.user_id
+    )
+    .fetch_all(&ctx.db)
+    .await?;
+
+    Ok(Json(CommonResponse {
+        code: 200,
+        message: "success".to_string(),
+        data: json!({
+            "teams": teams,
+        }),
     }))
 }

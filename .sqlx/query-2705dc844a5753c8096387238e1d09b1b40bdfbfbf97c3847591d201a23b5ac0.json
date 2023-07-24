@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select job_status \"job_status: JobStatus\"\n        from job where job_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "job_status: JobStatus",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "2705dc844a5753c8096387238e1d09b1b40bdfbfbf97c3847591d201a23b5ac0"
+}

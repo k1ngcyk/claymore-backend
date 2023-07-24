@@ -1,11 +1,11 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select job_status from job where job_id = $1",
+  "query": "select job_status \"job_status: JobStatus\" from job where job_id = $1",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "job_status",
+        "name": "job_status: JobStatus",
         "type_info": "Int4"
       }
     ],
@@ -18,5 +18,5 @@
       false
     ]
   },
-  "hash": "60bdfc081cf7b3111658c7f57e07e9858db1994c6c6ca3597f3cc9bdb698de42"
+  "hash": "20ef3c6556e9acc36aa6f2057a1ff051f24d181ca63c8a46105e79da22e1bf9f"
 }

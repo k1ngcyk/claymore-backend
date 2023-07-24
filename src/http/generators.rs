@@ -89,6 +89,15 @@ async fn handle_new_generator(
         return Err(Error::Unauthorized);
     }
 
+    let available_models = vec!["gpt-4", "gpt-3.5-turbo-16k", "gpt-3.5-turbo"];
+
+    if !available_models.contains(&req.generator.model_name.as_str()) {
+        return Err(Error::unprocessable_entity([(
+            "modelName",
+            "unavailable model name",
+        )]));
+    }
+
     let generator = sqlx::query!(
         r#"insert into generator (generator_name, prompt_chain, model_name, temperature, word_count, project_id) values ($1, $2, $3, $4, $5, $6) returning generator_id"#,
         req.generator.generator_name,

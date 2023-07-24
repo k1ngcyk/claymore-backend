@@ -10,7 +10,7 @@ use sqlx::PgPool;
 
 mod executor;
 
-pub async fn make_connection(url: &String) -> Connection {
+pub async fn make_channel(url: &String) -> Channel {
     let uri = url;
     let options = ConnectionProperties::default()
         // Use tokio executor and reactor.
@@ -18,12 +18,13 @@ pub async fn make_connection(url: &String) -> Connection {
         .with_executor(tokio_executor_trait::Tokio::current())
         .with_reactor(tokio_reactor_trait::Tokio);
     let connection = Connection::connect(uri, options).await.unwrap();
-    connection
+    let channel = connection.create_channel().await.unwrap();
+    channel
 }
 
-pub async fn start_consumer(db: PgPool, mq: Connection) {
+pub async fn start_consumer(db: PgPool, mq: Channel) {
     let db = db.clone();
-    let channel = mq.create_channel().await.unwrap();
+    let channel = mq;
     let _queue = channel
         .queue_declare(
             "claymore_job_queue",
@@ -62,7 +63,7 @@ pub async fn start_consumer(db: PgPool, mq: Connection) {
             delivery
                 .ack(BasicAckOptions::default())
                 .await
-                .expect("Failed to ack send_webhook_event message");
+                .expect("Failed to ack message");
         }
     });
 }
