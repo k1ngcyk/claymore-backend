@@ -2,6 +2,13 @@ use crate::http::extractor::AuthUser;
 use crate::http::types::Timestamptz;
 use crate::http::ApiContext;
 use crate::http::{Error, Result};
+use async_openai::{
+    types::{
+        ChatCompletionRequestMessageArgs, CreateChatCompletionRequestArgs,
+        CreateEmbeddingRequestArgs, Role,
+    },
+    Client,
+};
 use axum::extract::{Query, State};
 use axum::routing::{get, post};
 use axum::{Json, Router};
@@ -17,6 +24,7 @@ pub(crate) fn router() -> Router<ApiContext> {
             post(handle_new_generator).get(handle_get_generator_info),
         )
         .route("/generator/list", get(handle_get_generator_list))
+        .route("/generator/try", post(handle_try_generator))
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -45,6 +53,21 @@ struct GeneratorInfoRequest {
 #[serde(rename_all = "camelCase")]
 struct GeneratorListRequest {
     project_id: Uuid,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct GeneratorTryRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    generator_id: Option<Uuid>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    prompt_chain: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    model_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    temperature: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    word_count: Option<i32>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -99,6 +122,7 @@ async fn handle_new_generator(
     }
 
     let generator = sqlx::query!(
+        // language=PostgreSQL
         r#"insert into generator (generator_name, prompt_chain, model_name, temperature, word_count, project_id) values ($1, $2, $3, $4, $5, $6) returning generator_id"#,
         req.generator.generator_name,
         req.generator.prompt_chain,
@@ -221,5 +245,104 @@ async fn handle_get_generator_list(
         code: 200,
         message: "success".to_string(),
         data: json!({ "generators": generators }),
+    }))
+}
+
+async fn handle_try_generator(
+    auth_user: AuthUser,
+    ctx: State<ApiContext>,
+    Json(req): Json<GeneratorBody<GeneratorTryRequest>>,
+) -> Result<Json<CommonResponse>> {
+    let generator_id;
+    let model_name;
+    let prompt_chain;
+    let temperature;
+    let word_count;
+    if req.generator.generator_id.is_some() {
+        generator_id = req.generator.generator_id.unwrap();
+        let generator = sqlx::query!(
+            r#"select
+                prompt_chain,
+                model_name,
+                temperature,
+                word_count,
+                project_id
+            from generator where generator_id = $1"#,
+            generator_id
+        )
+        .fetch_one(&ctx.db)
+        .await?;
+        let team_id = sqlx::query!(
+            // language=PostgreSQL
+            r#"select team_id from project where project_id = $1"#,
+            generator.project_id
+        )
+        .fetch_one(&ctx.db)
+        .await?
+        .team_id;
+        let _member_record = sqlx::query!(
+            // language=PostgreSQL
+            r#"select user_level from team_member where team_id = $1 and user_id = $2"#,
+            team_id,
+            auth_user.user_id
+        )
+        .fetch_optional(&ctx.db)
+        .await?
+        .ok_or_else(|| Error::Unauthorized)?;
+        model_name = generator.model_name;
+        prompt_chain = generator.prompt_chain;
+        temperature = generator.temperature;
+        word_count = generator.word_count;
+    } else {
+        if req.generator.model_name.is_none()
+            || req.generator.prompt_chain.is_none()
+            || req.generator.temperature.is_none()
+            || req.generator.word_count.is_none()
+        {
+            return Err(Error::unprocessable_entity([(
+                "generatorId",
+                "generatorId or model_name, prompt_chain, temperature, word_count is required",
+            )]));
+        }
+        model_name = req.generator.model_name.unwrap();
+        prompt_chain = req.generator.prompt_chain.unwrap();
+        temperature = req.generator.temperature.unwrap();
+        word_count = req.generator.word_count.unwrap();
+    }
+    let prompts = prompt_chain["prompts"].as_array().unwrap();
+    let client = Client::new();
+    let mut response = String::new();
+    for prompt in prompts {
+        let prompt = prompt.as_str().unwrap();
+        let prompt = prompt.replace("^^", &response);
+        let chat_request = CreateChatCompletionRequestArgs::default()
+            .max_tokens(word_count as u16)
+            .model(&model_name)
+            .temperature(temperature as f32)
+            .messages([ChatCompletionRequestMessageArgs::default()
+                .role(Role::User)
+                .content(format!(r#"{}"#, prompt))
+                .build()
+                .unwrap()])
+            .build()
+            .unwrap();
+        let gpt_response = client.chat().create(chat_request).await.unwrap();
+        let output = &gpt_response
+            .choices
+            .iter()
+            .filter(|x| x.message.role == Role::Assistant)
+            .next()
+            .unwrap()
+            .message
+            .content;
+        response = output.to_string();
+    }
+
+    Ok(Json(CommonResponse {
+        code: 200,
+        message: "success".to_string(),
+        data: json!({
+            "response": response,
+        }),
     }))
 }
