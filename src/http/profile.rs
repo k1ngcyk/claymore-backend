@@ -1,9 +1,9 @@
 use crate::http::extractor::AuthUser;
 use crate::http::types::Timestamptz;
 use crate::http::ApiContext;
-use crate::http::{Error, Result};
-use axum::extract::{Query, State};
-use axum::routing::{get, post};
+use crate::http::Result;
+use axum::extract::State;
+use axum::routing::get;
 use axum::{Json, Router};
 use serde_json::json;
 use uuid::Uuid;

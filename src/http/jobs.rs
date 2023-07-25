@@ -6,7 +6,6 @@ use crate::queue;
 use axum::extract::{Query, State};
 use axum::routing::{get, post};
 use axum::{Json, Router};
-use log::info;
 use serde_json::json;
 use uuid::Uuid;
 

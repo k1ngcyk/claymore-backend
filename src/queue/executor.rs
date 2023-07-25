@@ -1,8 +1,5 @@
 use async_openai::{
-    types::{
-        ChatCompletionRequestMessageArgs, CreateChatCompletionRequestArgs,
-        CreateEmbeddingRequestArgs, Role,
-    },
+    types::{ChatCompletionRequestMessageArgs, CreateChatCompletionRequestArgs, Role},
     Client,
 };
 use lapin::message::Delivery;
@@ -120,7 +117,7 @@ pub async fn execute_job(db: PgPool, delivery: &Delivery) {
                 .content;
             response = output.to_string();
         }
-        let result = sqlx::query!(
+        let _result = sqlx::query!(
             r#"insert into datadrop (job_id, datadrop_name, datadrop_content, project_id) values ($1, $2, $3, $4)"#,
             job_id,
             format!("Data {}", job_id),

@@ -3,7 +3,7 @@ use crate::http::types::Timestamptz;
 use crate::http::ApiContext;
 use crate::http::{Error, Result};
 use axum::extract::{Query, State};
-use axum::routing::{get, post, put};
+use axum::routing::{get, put};
 use axum::{Json, Router};
 use serde_json::json;
 use uuid::Uuid;
