@@ -305,6 +305,13 @@ async fn handle_try_generator(
         prompt_chain = req.generator.prompt_chain.unwrap();
         temperature = req.generator.temperature.unwrap();
         word_count = req.generator.word_count.unwrap();
+        let available_models = vec!["gpt-4", "gpt-3.5-turbo-16k", "gpt-3.5-turbo"];
+        if !available_models.contains(&model_name.as_str()) {
+            return Err(Error::unprocessable_entity([(
+                "modelName",
+                "unavailable model name",
+            )]));
+        }
     }
     let prompts = prompt_chain["prompts"].as_array().unwrap();
     let client = Client::new();
@@ -321,9 +328,8 @@ async fn handle_try_generator(
                 .content(format!(r#"{}"#, prompt))
                 .build()
                 .unwrap()])
-            .build()
-            .unwrap();
-        let gpt_response = client.chat().create(chat_request).await.unwrap();
+            .build()?;
+        let gpt_response = client.chat().create(chat_request).await?;
         let output = &gpt_response
             .choices
             .iter()

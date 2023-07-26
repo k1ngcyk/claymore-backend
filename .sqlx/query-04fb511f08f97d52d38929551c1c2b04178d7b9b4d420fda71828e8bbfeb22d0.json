@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "insert into job (project_id, job_name, generator_id, target_count) values ($1, $2, $3, $4) returning\n            job_id,\n            job_name,\n            project_id,\n            generator_id,\n            target_count,\n            job_status \"job_status: JobStatus\",\n            prompt_chain,\n            temperature,\n            word_count,\n            created_at \"created_at: Timestamptz\",\n            updated_at \"updated_at: Timestamptz\"\n        ",
+  "query": "insert into job (project_id, job_name, generator_id, target_count) values ($1, $2, $3, $4) returning\n            job_id,\n            job_name,\n            project_id,\n            generator_id,\n            target_count,\n            job_status \"job_status: JobStatus\",\n            prompt_chain,\n            temperature,\n            word_count,\n            (select count(*) from datadrop where job_id = job.job_id and datadrop_content is not null) as finished_count,\n            created_at \"created_at: Timestamptz\",\n            updated_at \"updated_at: Timestamptz\"\n        ",
   "describe": {
     "columns": [
       {
@@ -50,11 +50,16 @@
       },
       {
         "ordinal": 9,
+        "name": "finished_count",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 10,
         "name": "created_at: Timestamptz",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 10,
+        "ordinal": 11,
         "name": "updated_at: Timestamptz",
         "type_info": "Timestamptz"
       }
@@ -77,9 +82,10 @@
       true,
       true,
       true,
+      null,
       false,
       true
     ]
   },
-  "hash": "957c04e93b87f4a4d3f4913845746bb205c650fdbc91b2f9594fceefab26d60d"
+  "hash": "04fb511f08f97d52d38929551c1c2b04178d7b9b4d420fda71828e8bbfeb22d0"
 }

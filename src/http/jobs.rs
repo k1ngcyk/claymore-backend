@@ -91,6 +91,7 @@ struct JobFromSql {
     created_at: Timestamptz,
     #[serde(skip_serializing_if = "Option::is_none")]
     updated_at: Option<Timestamptz>,
+    finished_count: Option<i64>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -109,6 +110,7 @@ struct JobFullFromSql {
     created_at: Timestamptz,
     #[serde(skip_serializing_if = "Option::is_none")]
     updated_at: Option<Timestamptz>,
+    model_name: Option<String>,
     generator_name: String,
     finished_count: Option<i64>,
 }
@@ -169,6 +171,7 @@ async fn handle_new_job(
             prompt_chain,
             temperature,
             word_count,
+            (select count(*) from datadrop where job_id = job.job_id and datadrop_content is not null) as finished_count,
             created_at "created_at: Timestamptz",
             updated_at "updated_at: Timestamptz"
         "#,
@@ -236,6 +239,7 @@ async fn handle_get_job_list(
             prompt_chain,
             temperature,
             word_count,
+            (select count(*) from datadrop where job_id = job.job_id and datadrop_content is not null) as finished_count,
             created_at "created_at: Timestamptz",
             updated_at "updated_at: Timestamptz"
         from job where project_id = $1"#,
@@ -432,6 +436,7 @@ async fn handle_get_job_info(
             job.generator_id,
             target_count,
             job_status "job_status: JobStatus",
+            generator.model_name,
             generator.prompt_chain,
             generator.temperature,
             generator.word_count,

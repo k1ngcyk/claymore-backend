@@ -3,7 +3,7 @@ use crate::http::types::Timestamptz;
 use crate::http::ApiContext;
 use crate::http::{Error, Result};
 use axum::extract::{Query, State};
-use axum::routing::{get, post};
+use axum::routing::{get, post, put};
 use axum::{Json, Router};
 use serde_json::json;
 use uuid::Uuid;
@@ -17,6 +17,7 @@ pub(crate) fn router() -> Router<ApiContext> {
             post(handle_new_character).get(handle_get_character_info),
         )
         .route("/character/list", get(handle_get_character_list))
+        .route("/character/settings", put(handle_modify_character_settings))
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -42,6 +43,14 @@ struct CharacterInfoRequest {
 #[serde(rename_all = "camelCase")]
 struct CharacterListRequest {
     project_id: Uuid,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CharacterModifyRequest {
+    character_id: Uuid,
+    settings: Option<serde_json::Value>,
+    character_name: Option<String>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -194,5 +203,66 @@ async fn handle_get_character_list(
         code: 200,
         message: "success".to_string(),
         data: json!({ "characters": characters }),
+    }))
+}
+
+async fn handle_modify_character_settings(
+    auth_user: AuthUser,
+    ctx: State<ApiContext>,
+    Json(req): Json<CharacterBody<CharacterModifyRequest>>,
+) -> Result<Json<CommonResponse>> {
+    let team_id = sqlx::query!(
+        r#"select team_id from project where project_id = (select project_id from character where character_id = $1)"#,
+        req.character.character_id
+    )
+    .fetch_one(&ctx.db)
+    .await?
+    .team_id;
+
+    let _member_record = sqlx::query!(
+        // language=PostgreSQL
+        r#"select user_level from team_member where team_id = $1 and user_id = $2"#,
+        team_id,
+        auth_user.user_id
+    )
+    .fetch_optional(&ctx.db)
+    .await?
+    .ok_or_else(|| Error::Unauthorized)?;
+
+    if req.character.character_name.is_none() && req.character.settings.is_none() {
+        return Err(Error::unprocessable_entity([(
+            "key",
+            "either character_name or settings must be provided",
+        )]));
+    }
+
+    if req.character.character_name.is_some() {
+        sqlx::query!(
+            // language=PostgreSQL
+            r#"update character set character_name = $1 where character_id = $2"#,
+            req.character.character_name,
+            req.character.character_id
+        )
+        .execute(&ctx.db)
+        .await?;
+    }
+
+    if req.character.settings.is_some() {
+        sqlx::query!(
+            // language=PostgreSQL
+            r#"update character set settings = $1 where character_id = $2"#,
+            req.character.settings,
+            req.character.character_id
+        )
+        .execute(&ctx.db)
+        .await?;
+    }
+
+    Ok(Json(CommonResponse {
+        code: 200,
+        message: "success".to_string(),
+        data: json!({
+            "characterId": req.character.character_id,
+        }),
     }))
 }

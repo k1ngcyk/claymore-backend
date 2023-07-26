@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update character set settings = $1 where character_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Jsonb",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "40719546bebf7c466fe9b37d79e675c8fa72fb2ed4f6809d1455fe3bc82ff4e9"
+}

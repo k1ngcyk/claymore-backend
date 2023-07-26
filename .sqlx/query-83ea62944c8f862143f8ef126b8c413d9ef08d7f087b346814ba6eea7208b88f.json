@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select\n            job_id,\n            job_name,\n            job.project_id,\n            job.generator_id,\n            target_count,\n            job_status \"job_status: JobStatus\",\n            generator.prompt_chain,\n            generator.temperature,\n            generator.word_count,\n            generator.generator_name,\n            (select count(*) from datadrop where job_id = $1 and datadrop_content is not null) as finished_count,\n            job.created_at \"created_at: Timestamptz\",\n            job.updated_at \"updated_at: Timestamptz\"\n        from job\n        left join generator on job.generator_id = generator.generator_id\n        where job_id = $1",
+  "query": "select\n            job_id,\n            job_name,\n            job.project_id,\n            job.generator_id,\n            target_count,\n            job_status \"job_status: JobStatus\",\n            generator.model_name,\n            generator.prompt_chain,\n            generator.temperature,\n            generator.word_count,\n            generator.generator_name,\n            (select count(*) from datadrop where job_id = $1 and datadrop_content is not null) as finished_count,\n            job.created_at \"created_at: Timestamptz\",\n            job.updated_at \"updated_at: Timestamptz\"\n        from job\n        left join generator on job.generator_id = generator.generator_id\n        where job_id = $1",
   "describe": {
     "columns": [
       {
@@ -35,36 +35,41 @@
       },
       {
         "ordinal": 6,
+        "name": "model_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
         "name": "prompt_chain",
         "type_info": "Jsonb"
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "temperature",
         "type_info": "Float8"
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "word_count",
         "type_info": "Int4"
       },
       {
-        "ordinal": 9,
+        "ordinal": 10,
         "name": "generator_name",
         "type_info": "Text"
       },
       {
-        "ordinal": 10,
+        "ordinal": 11,
         "name": "finished_count",
         "type_info": "Int8"
       },
       {
-        "ordinal": 11,
+        "ordinal": 12,
         "name": "created_at: Timestamptz",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 12,
+        "ordinal": 13,
         "name": "updated_at: Timestamptz",
         "type_info": "Timestamptz"
       }
@@ -85,10 +90,11 @@
       false,
       false,
       false,
+      false,
       null,
       false,
       true
     ]
   },
-  "hash": "b6e7dd5aa97ce7e1339a08f0a930faa64c301c19688af801aa62a7aff34aea5a"
+  "hash": "83ea62944c8f862143f8ef126b8c413d9ef08d7f087b346814ba6eea7208b88f"
 }
