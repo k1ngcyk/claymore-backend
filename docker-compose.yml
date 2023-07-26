@@ -9,6 +9,7 @@ services:
       - claymore.env
     networks:
       - claymore_backend_network
+    restart: always
     depends_on:
       - claymore-db
       - claymore-rabbitmq
@@ -23,11 +24,13 @@ services:
       - POSTGRES_USER=fluxus
       - POSTGRES_PASSWORD=fluxus
       - POSTGRES_DB=claymore_backend
+    restart: always
     networks:
       - claymore_backend_network
 
   claymore-rabbitmq:
     image: rabbitmq:3-management
+    restart: always
     networks:
       - claymore_backend_network
 
