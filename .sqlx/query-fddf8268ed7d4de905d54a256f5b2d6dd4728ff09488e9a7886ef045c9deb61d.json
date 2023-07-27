@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "insert into feedback (user_id, datadrop_id, feedback_content) values ($1, $2, $3)\n            on conflict (user_id, datadrop_id) do update set feedback_content = $3 returning feedback_id\n        ",
+  "query": "insert into feedback (user_id, datadrop_id, feedback_content) values ($1, $2, $3)\n                on conflict (user_id, datadrop_id) do update set feedback_content = $3 returning feedback_id\n            ",
   "describe": {
     "columns": [
       {
@@ -20,5 +20,5 @@
       false
     ]
   },
-  "hash": "e4db06659b2d1b026a4a39841f1e91241a5f778f08a9b32780464f77e3b7f9bb"
+  "hash": "fddf8268ed7d4de905d54a256f5b2d6dd4728ff09488e9a7886ef045c9deb61d"
 }

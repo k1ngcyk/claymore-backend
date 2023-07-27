@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "delete from feedback where user_id = $1 and datadrop_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "bfc481ad874ab284fef0ea17f1d035a25ba1b16500d8d51919d39aeda61a60cb"
+}

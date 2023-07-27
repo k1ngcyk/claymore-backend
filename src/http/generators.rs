@@ -18,7 +18,9 @@ pub(crate) fn router() -> Router<ApiContext> {
     Router::new()
         .route(
             "/generator",
-            post(handle_new_generator).get(handle_get_generator_info),
+            post(handle_new_generator)
+                .get(handle_get_generator_info)
+                .delete(handle_delete_generator),
         )
         .route("/generator/list", get(handle_get_generator_list))
         .route("/generator/try", post(handle_try_generator))
@@ -50,6 +52,12 @@ struct GeneratorInfoRequest {
 #[serde(rename_all = "camelCase")]
 struct GeneratorListRequest {
     project_id: Uuid,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct GeneratorDeleteRequest {
+    generator_id: Uuid,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -355,5 +363,56 @@ async fn handle_try_generator(
         data: json!({
             "response": response,
         }),
+    }))
+}
+
+async fn handle_delete_generator(
+    auth_user: AuthUser,
+    ctx: State<ApiContext>,
+    Json(req): Json<GeneratorBody<GeneratorDeleteRequest>>,
+) -> Result<Json<CommonResponse>> {
+    let generator_id = req.generator.generator_id;
+    let generator = sqlx::query!(
+        r#"select
+            project_id
+        from generator where generator_id = $1"#,
+        generator_id
+    )
+    .fetch_one(&ctx.db)
+    .await?;
+    let team_id = sqlx::query!(
+        // language=PostgreSQL
+        r#"select team_id from project where project_id = $1"#,
+        generator.project_id
+    )
+    .fetch_one(&ctx.db)
+    .await?
+    .team_id;
+    let _member_record = sqlx::query!(
+        // language=PostgreSQL
+        r#"select user_level from team_member where team_id = $1 and user_id = $2"#,
+        team_id,
+        auth_user.user_id
+    )
+    .fetch_optional(&ctx.db)
+    .await?
+    .ok_or_else(|| Error::Unauthorized)?;
+
+    if _member_record.user_level != 0 {
+        return Err(Error::Unauthorized);
+    }
+
+    sqlx::query!(
+        // language=PostgreSQL
+        r#"delete from generator where generator_id = $1"#,
+        generator_id
+    )
+    .execute(&ctx.db)
+    .await?;
+
+    Ok(Json(CommonResponse {
+        code: 200,
+        message: "success".to_string(),
+        data: json!({}),
     }))
 }
