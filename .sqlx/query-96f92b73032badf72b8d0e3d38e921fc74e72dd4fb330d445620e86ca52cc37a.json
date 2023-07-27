@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "insert into generator (generator_name, prompt_chain, model_name, temperature, word_count, project_id) values ($1, $2, $3, $4, $5, $6) returning generator_id",
+  "query": "insert into generator (generator_name, prompt_chain, model_name, temperature, word_count, project_id)\n        values ($1, $2, $3, $4, $5, $6) returning generator_id",
   "describe": {
     "columns": [
       {
@@ -23,5 +23,5 @@
       false
     ]
   },
-  "hash": "04298c62f228b984dd83ec436171d6ca9ad9f775ee9a173f30d21fdc9b259f85"
+  "hash": "96f92b73032badf72b8d0e3d38e921fc74e72dd4fb330d445620e86ca52cc37a"
 }

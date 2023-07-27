@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select\n            team_id,\n            team_name,\n            owner_id,\n            team_level,\n            created_at \"created_at: Timestamptz\",\n            updated_at \"updated_at: Timestamptz\"\n        from team where team_id = $1",
+  "query": "select\n            team_id,\n            team_name,\n            owner_id,\n            team_level \"team_level: TeamLevel\",\n            created_at \"created_at: Timestamptz\",\n            updated_at \"updated_at: Timestamptz\"\n        from team where owner_id = $1",
   "describe": {
     "columns": [
       {
@@ -20,7 +20,7 @@
       },
       {
         "ordinal": 3,
-        "name": "team_level",
+        "name": "team_level: TeamLevel",
         "type_info": "Int4"
       },
       {
@@ -48,5 +48,5 @@
       true
     ]
   },
-  "hash": "1a82ccdff93058b6e49eb6b7deb19736f2ca7c9042876f37d11e0bc08315cbac"
+  "hash": "914663e8bb4cc04b8aa22561dacebcfd60e1604acca7229fce132aa2491520b8"
 }
