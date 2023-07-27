@@ -17,6 +17,22 @@ pub(crate) fn router() -> Router<ApiContext> {
         .route("/team/list", get(handle_get_team_list))
 }
 
+#[derive(serde::Serialize, serde::Deserialize, sqlx::Type, PartialEq, Debug)]
+#[repr(i32)]
+pub enum TeamLevel {
+    Free,
+    Pro,
+    Enterprise,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, sqlx::Type, PartialEq, Debug)]
+#[repr(i32)]
+pub enum UserLevel {
+    Owner,
+    Editor,
+    Viewer,
+}
+
 #[derive(serde::Serialize, serde::Deserialize)]
 struct TeamBody<T> {
     team: T,
@@ -26,7 +42,7 @@ struct TeamBody<T> {
 #[serde(rename_all = "camelCase")]
 struct NewTeamRequest {
     team_name: String,
-    team_level: i32,
+    team_level: TeamLevel,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -48,7 +64,7 @@ struct TeamFromSql {
     team_id: Uuid,
     team_name: String,
     owner_id: Uuid,
-    team_level: i32,
+    team_level: TeamLevel,
     created_at: Timestamptz,
     #[serde(skip_serializing_if = "Option::is_none")]
     updated_at: Option<Timestamptz>,
@@ -63,7 +79,7 @@ async fn handle_new_team(
         r#"insert into team (team_name, owner_id, team_level) values ($1, $2, $3) returning team_id"#,
         req.team.team_name,
         auth_user.user_id,
-        req.team.team_level
+        req.team.team_level as i32,
     )
     .fetch_one(&ctx.db)
     .await?;
@@ -89,7 +105,7 @@ async fn handle_get_team_info(
             team_id,
             team_name,
             owner_id,
-            team_level,
+            team_level "team_level: TeamLevel",
             created_at "created_at: Timestamptz",
             updated_at "updated_at: Timestamptz"
         from team where team_id = $1"#,
@@ -170,7 +186,7 @@ async fn handle_get_team_list(
             team_id,
             team_name,
             owner_id,
-            team_level,
+            team_level "team_level: TeamLevel",
             created_at "created_at: Timestamptz",
             updated_at "updated_at: Timestamptz"
         from team where owner_id = $1"#,

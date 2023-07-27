@@ -158,6 +158,20 @@ async fn handle_new_job(
         return Err(Error::Unauthorized);
     }
 
+    if req.job.generator_id.is_none() {
+        return Err(Error::unprocessable_entity([(
+            "generatorId",
+            "generatorId is required",
+        )]));
+    }
+
+    if req.job.job_name == "" {
+        return Err(Error::unprocessable_entity([(
+            "jobName",
+            "jobName is required",
+        )]));
+    }
+
     let job = sqlx::query_as!(
         JobFromSql,
         // language=PostgreSQL
@@ -183,7 +197,6 @@ async fn handle_new_job(
     .fetch_one(&ctx.db)
     .await?;
 
-    // TODO: MQ
     let channel = queue::make_channel(&ctx.config.rabbitmq_url).await;
     let _result = queue::publish_message(
         &channel,

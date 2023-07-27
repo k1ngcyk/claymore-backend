@@ -81,6 +81,13 @@ async fn handle_new_comment(
     .await?
     .ok_or_else(|| Error::Unauthorized)?;
 
+    if req.comment.comment_content == "" || req.comment.comment_content.len() > 500 {
+        return Err(Error::unprocessable_entity([(
+            "commentContent",
+            "comment content should be non-empty and less than 500 characters",
+        )]));
+    }
+
     let comment = sqlx::query!(
         // language=PostgreSQL
         r#"insert into comment (user_id, datadrop_id, comment_content) values ($1, $2, $3) returning comment_id"#,

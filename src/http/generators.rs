@@ -118,9 +118,17 @@ async fn handle_new_generator(
         )]));
     }
 
+    if req.generator.generator_name == "" {
+        return Err(Error::unprocessable_entity([(
+            "generatorName",
+            "generator name is required",
+        )]));
+    }
+
     let generator = sqlx::query!(
         // language=PostgreSQL
-        r#"insert into generator (generator_name, prompt_chain, model_name, temperature, word_count, project_id) values ($1, $2, $3, $4, $5, $6) returning generator_id"#,
+        r#"insert into generator (generator_name, prompt_chain, model_name, temperature, word_count, project_id)
+        values ($1, $2, $3, $4, $5, $6) returning generator_id"#,
         req.generator.generator_name,
         req.generator.prompt_chain,
         req.generator.model_name,
