@@ -23,7 +23,8 @@ struct FeedbackBody<T> {
 #[serde(rename_all = "camelCase")]
 struct NewFeedbackRequest {
     datadrop_id: Uuid,
-    feedback_content: serde_json::Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    feedback_content: Option<serde_json::Value>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -81,23 +82,41 @@ async fn handle_new_feedback(
     .await?
     .ok_or_else(|| Error::Unauthorized)?;
 
-    let feedback = sqlx::query!(
-        // language=PostgreSQL
-        r#"insert into feedback (user_id, datadrop_id, feedback_content) values ($1, $2, $3)
-            on conflict (user_id, datadrop_id) do update set feedback_content = $3 returning feedback_id
-        "#,
-        auth_user.user_id,
-        req.feedback.datadrop_id,
-        req.feedback.feedback_content,
-    )
-    .fetch_one(&ctx.db)
-    .await?;
+    if req.feedback.feedback_content.is_none() {
+        sqlx::query!(
+            // language=PostgreSQL
+            r#"delete from feedback where user_id = $1 and datadrop_id = $2"#,
+            auth_user.user_id,
+            req.feedback.datadrop_id
+        )
+        .execute(&ctx.db)
+        .await?;
 
-    Ok(Json(CommonResponse {
-        code: 200,
-        message: "success".to_string(),
-        data: json!({
-            "feedbackId": feedback.feedback_id,
-        }),
-    }))
+        Ok(Json(CommonResponse {
+            code: 200,
+            message: "success".to_string(),
+            data: json!({}),
+        }))
+    } else {
+        let feedback_id = sqlx::query!(
+        // language=PostgreSQL
+            r#"insert into feedback (user_id, datadrop_id, feedback_content) values ($1, $2, $3)
+                on conflict (user_id, datadrop_id) do update set feedback_content = $3 returning feedback_id
+            "#,
+            auth_user.user_id,
+            req.feedback.datadrop_id,
+            req.feedback.feedback_content,
+        )
+        .fetch_one(&ctx.db)
+        .await?
+        .feedback_id;
+
+        Ok(Json(CommonResponse {
+            code: 200,
+            message: "success".to_string(),
+            data: json!({
+                "feedbackId": feedback_id,
+            }),
+        }))
+    }
 }
