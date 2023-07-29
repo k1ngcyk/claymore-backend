@@ -70,6 +70,13 @@ async fn handle_new_project(
         return Err(Error::Unauthorized);
     }
 
+    if req.project.project_name == "" {
+        return Err(Error::unprocessable_entity([(
+            "projectName",
+            "projectName can not be empty",
+        )]));
+    }
+
     let project = sqlx::query_as!(
         ProjectFromSql,
         // language=PostgreSQL
