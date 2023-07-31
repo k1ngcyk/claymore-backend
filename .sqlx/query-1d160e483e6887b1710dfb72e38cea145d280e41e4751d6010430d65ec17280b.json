@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select\n                feedback_id,\n                user_id,\n                datadrop_id,\n                feedback_content,\n                created_at \"created_at: Timestamptz\",\n                updated_at \"updated_at: Timestamptz\"\n            from feedback where datadrop_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "feedback_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "user_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "datadrop_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "feedback_content",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at: Timestamptz",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "updated_at: Timestamptz",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "1d160e483e6887b1710dfb72e38cea145d280e41e4751d6010430d65ec17280b"
+}
