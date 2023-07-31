@@ -92,10 +92,27 @@ async fn handle_new_feedback(
         .execute(&ctx.db)
         .await?;
 
+        let feedback = sqlx::query_as!(
+            FeedbackFromSql,
+            r#"select
+                feedback_id,
+                user_id,
+                datadrop_id,
+                feedback_content,
+                created_at "created_at: Timestamptz",
+                updated_at "updated_at: Timestamptz"
+            from feedback where datadrop_id = $1"#,
+            req.feedback.datadrop_id
+        )
+        .fetch_all(&ctx.db)
+        .await?;
+
         Ok(Json(CommonResponse {
             code: 200,
             message: "success".to_string(),
-            data: json!({}),
+            data: json!({
+                "feedback": feedback,
+            }),
         }))
     } else {
         let feedback_id = sqlx::query!(
@@ -111,10 +128,26 @@ async fn handle_new_feedback(
         .await?
         .feedback_id;
 
+        let feedback = sqlx::query_as!(
+            FeedbackFromSql,
+            r#"select
+                feedback_id,
+                user_id,
+                datadrop_id,
+                feedback_content,
+                created_at "created_at: Timestamptz",
+                updated_at "updated_at: Timestamptz"
+            from feedback where datadrop_id = $1"#,
+            req.feedback.datadrop_id
+        )
+        .fetch_all(&ctx.db)
+        .await?;
+
         Ok(Json(CommonResponse {
             code: 200,
             message: "success".to_string(),
             data: json!({
+                "feedback": feedback,
                 "feedbackId": feedback_id,
             }),
         }))

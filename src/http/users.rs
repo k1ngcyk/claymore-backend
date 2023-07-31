@@ -95,7 +95,8 @@ async fn create_user(
             "user": {
                 "email": req.user.email,
                 "token": AuthUser { user_id }.to_jwt(&ctx),
-                "username": req.user.username
+                "username": req.user.username,
+                "userId": user_id,
             }
         }),
     }))
@@ -125,7 +126,8 @@ async fn login_user(
             "user": {
                 "email": user.email,
                 "token": AuthUser { user_id: user.user_id }.to_jwt(&ctx),
-                "username": user.user_name
+                "username": user.user_name,
+                "userId": user.user_id,
             }
         }),
     }))
