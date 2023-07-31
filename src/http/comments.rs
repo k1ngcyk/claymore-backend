@@ -48,6 +48,7 @@ struct CommentFromSql {
     created_at: Timestamptz,
     #[serde(skip_serializing_if = "Option::is_none")]
     updated_at: Option<Timestamptz>,
+    user_name: String,
 }
 
 async fn handle_new_comment(
@@ -98,11 +99,30 @@ async fn handle_new_comment(
     .fetch_one(&ctx.db)
     .await?;
 
+    let comments = sqlx::query_as!(
+        CommentFromSql,
+        r#"select
+            "user".user_name,
+            comment_id,
+            comment.user_id,
+            datadrop_id,
+            comment_content,
+            comment.created_at "created_at: Timestamptz",
+            comment.updated_at "updated_at: Timestamptz"
+        from comment
+        left join "user" on comment.user_id = "user".user_id
+        where datadrop_id = $1"#,
+        req.comment.datadrop_id
+    )
+    .fetch_all(&ctx.db)
+    .await?;
+
     Ok(Json(CommonResponse {
         code: 200,
         message: "success".to_string(),
         data: json!({
             "commentId": comment.comment_id,
+            "comment": comments,
         }),
     }))
 }
