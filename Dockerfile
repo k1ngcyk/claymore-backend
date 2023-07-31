@@ -12,6 +12,10 @@ RUN cargo build --release
 
 FROM debian:bookworm-slim
 
+RUN apt-get update && apt-get install -y ca-certificates
+
+RUN update-ca-certificates
+
 RUN mkdir -p /opt/fluxus
 
 COPY migrations /opt/fluxus/migrations
