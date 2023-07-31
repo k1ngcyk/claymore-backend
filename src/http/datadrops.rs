@@ -236,6 +236,14 @@ async fn handle_get_datadrop_list(
         )]));
     }
 
+    let total_count = sqlx::query!(
+        r#"select count(*) as "count!: i64" from datadrop where project_id = $1"#,
+        req.project_id
+    )
+    .fetch_one(&ctx.db)
+    .await?
+    .count;
+
     let datadrop_list = sqlx::query_as!(
         DatadropFullFromSql,
         r#"select
@@ -266,6 +274,7 @@ async fn handle_get_datadrop_list(
         code: 200,
         message: "success".to_string(),
         data: json!({
+            "totalCount": total_count,
             "datadropList": datadrop_list,
         }),
     }))

@@ -1,7 +1,7 @@
 use crate::http::extractor::AuthUser;
 use crate::http::types::Timestamptz;
 use crate::http::ApiContext;
-use crate::http::{Error, Result};
+use crate::http::{Error, Result, ResultExt};
 use async_openai::{
     types::{ChatCompletionRequestMessageArgs, CreateChatCompletionRequestArgs, Role},
     Client,
@@ -408,7 +408,10 @@ async fn handle_delete_generator(
         generator_id
     )
     .execute(&ctx.db)
-    .await?;
+    .await
+    .on_constraint("job_generator_id_fkey", |_| {
+        Error::unprocessable_entity([("generatorId", "generatorId is in use")])
+    })?;
 
     Ok(Json(CommonResponse {
         code: 200,
