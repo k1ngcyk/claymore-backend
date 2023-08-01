@@ -36,3 +36,19 @@ deploy:
     - docker compose up -d
   tags:
     - fluxus-sg-shell
+  only:
+    - main
+
+deploy-dev:
+  stage: deploy
+  script:
+    - docker login -u "$HARBOR_USERNAME" -p "$HARBOR_PASSWORD" $HARBOR_HOST
+    - docker pull $LATEST_IMAGE
+    - echo "IMAGE_NAME=$LATEST_IMAGE" > .env
+    - cp $PRODUCTION_ENV claymore.env
+    - docker compose up -d
+  tags:
+    - fluxus-hz-dev-shell
+  only:
+    - dev
+  when: manual
