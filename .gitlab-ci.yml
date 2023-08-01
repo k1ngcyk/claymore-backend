@@ -51,4 +51,3 @@ deploy-dev:
     - fluxus-hz-dev-shell
   only:
     - dev
-  when: manual
