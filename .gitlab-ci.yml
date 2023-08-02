@@ -30,7 +30,7 @@ deploy:
   stage: deploy
   script:
     - docker login -u "$HARBOR_USERNAME" -p "$HARBOR_PASSWORD" $HARBOR_HOST
-    - docker pull $LATEST_IMAGE
+    - docker pull $IMAGE_NAME
     - echo "IMAGE_NAME=$LATEST_IMAGE" > .env
     - cp $PRODUCTION_ENV claymore.env
     - docker compose up -d

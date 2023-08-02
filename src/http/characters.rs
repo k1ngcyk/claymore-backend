@@ -88,7 +88,7 @@ async fn handle_new_character(
     .await?
     .ok_or_else(|| Error::Unauthorized)?;
 
-    if member_record.user_level != 0 {
+    if member_record.user_level > 1 {
         return Err(Error::Unauthorized);
     }
 
