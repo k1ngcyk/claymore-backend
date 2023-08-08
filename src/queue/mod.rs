@@ -1,6 +1,9 @@
 use lapin::{
     message::DeliveryResult,
-    options::{BasicAckOptions, BasicConsumeOptions, BasicPublishOptions, QueueDeclareOptions},
+    options::{
+        BasicAckOptions, BasicConsumeOptions, BasicPublishOptions, BasicQosOptions,
+        QueueDeclareOptions,
+    },
     publisher_confirm::Confirmation,
     types::FieldTable,
     BasicProperties, Channel, Connection, ConnectionProperties,
@@ -25,6 +28,10 @@ pub async fn make_channel(url: &String) -> Channel {
 pub async fn start_consumer(db: PgPool, mq: Channel) {
     let db = db.clone();
     let channel = mq;
+    channel
+        .basic_qos(1, BasicQosOptions::default())
+        .await
+        .unwrap();
     let _queue = channel
         .queue_declare(
             "claymore_job_queue",
