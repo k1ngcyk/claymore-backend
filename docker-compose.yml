@@ -33,6 +33,8 @@ services:
     restart: always
     networks:
       - claymore_backend_network
+    volumes:
+      - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
 
 networks:
   claymore_backend_network:
