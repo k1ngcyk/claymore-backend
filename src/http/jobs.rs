@@ -6,6 +6,7 @@ use crate::queue;
 use axum::extract::{Query, State};
 use axum::routing::{get, post};
 use axum::{Json, Router};
+use log::info;
 use serde_json::json;
 use uuid::Uuid;
 
@@ -19,7 +20,7 @@ pub(crate) fn router() -> Router<ApiContext> {
         .route("/job/candidate", get(handle_get_job_candidate))
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
 struct JobBody<T> {
     job: T,
 }
@@ -40,13 +41,21 @@ enum JobOperation {
     Pause,
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 struct NewJobRequest {
     job_name: String,
     project_id: Uuid,
     #[serde(skip_serializing_if = "Option::is_none")]
     generator_id: Option<Uuid>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    prompt_chain: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    temperature: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    word_count: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    model_name: Option<String>,
     target_count: i32,
 }
 
@@ -56,13 +65,13 @@ struct JobInfoRequest {
     job_id: Uuid,
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 struct JobListRequest {
     project_id: Uuid,
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 struct JobOperateRequest {
     job_id: Uuid,
@@ -88,6 +97,7 @@ struct JobFromSql {
     prompt_chain: Option<serde_json::Value>,
     temperature: Option<f64>,
     word_count: Option<i32>,
+    model_name: Option<String>,
     created_at: Timestamptz,
     #[serde(skip_serializing_if = "Option::is_none")]
     updated_at: Option<Timestamptz>,
@@ -136,6 +146,7 @@ async fn handle_new_job(
     ctx: State<ApiContext>,
     Json(req): Json<JobBody<NewJobRequest>>,
 ) -> Result<Json<CommonResponse>> {
+    info!("handle_new_job: {:?}", req);
     let team_id = sqlx::query!(
         r#"select team_id from project where project_id = $1"#,
         req.job.project_id
@@ -158,10 +169,15 @@ async fn handle_new_job(
         return Err(Error::Unauthorized);
     }
 
-    if req.job.generator_id.is_none() {
+    if req.job.generator_id.is_none()
+        && req.job.model_name.is_none()
+        && req.job.prompt_chain.is_none()
+        && req.job.temperature.is_none()
+        && req.job.word_count.is_none()
+    {
         return Err(Error::unprocessable_entity([(
-            "generatorId",
-            "generatorId is required",
+            "jobParams",
+            "generatorId or detail info is required",
         )]));
     }
 
@@ -172,16 +188,51 @@ async fn handle_new_job(
         )]));
     }
 
+    let prompt_chain;
+    let model_name;
+    let temperature;
+    let word_count;
+
+    if req.job.generator_id.is_some() {
+        let generator = sqlx::query!(
+            r#"select prompt_chain, temperature, word_count, model_name
+        from generator where generator_id = $1"#,
+            req.job.generator_id
+        )
+        .fetch_one(&ctx.db)
+        .await?;
+        prompt_chain = generator.prompt_chain;
+        model_name = generator.model_name;
+        temperature = generator.temperature;
+        word_count = generator.word_count;
+    } else {
+        if req.job.prompt_chain.is_none()
+            || req.job.model_name.is_none()
+            || req.job.temperature.is_none()
+            || req.job.word_count.is_none()
+        {
+            return Err(Error::unprocessable_entity([(
+                "jobParams",
+                "promptChain, modelName, temperature, wordCount is required",
+            )]));
+        }
+        prompt_chain = req.job.prompt_chain.unwrap();
+        model_name = req.job.model_name.unwrap();
+        temperature = req.job.temperature.unwrap();
+        word_count = req.job.word_count.unwrap();
+    }
+
     let job = sqlx::query_as!(
         JobFromSql,
         // language=PostgreSQL
-        r#"insert into job (project_id, job_name, generator_id, target_count) values ($1, $2, $3, $4) returning
+        r#"insert into job (project_id, job_name, prompt_chain, model_name, temperature, word_count, target_count) values ($1, $2, $3, $4, $5, $6, $7) returning
             job_id,
             job_name,
             project_id,
             generator_id,
             target_count,
             job_status "job_status: JobStatus",
+            model_name,
             prompt_chain,
             temperature,
             word_count,
@@ -191,7 +242,10 @@ async fn handle_new_job(
         "#,
         req.job.project_id,
         req.job.job_name,
-        req.job.generator_id,
+        prompt_chain,
+        model_name,
+        temperature,
+        word_count,
         req.job.target_count
     )
     .fetch_one(&ctx.db)
@@ -202,7 +256,10 @@ async fn handle_new_job(
         &channel,
         json!({
             "job_id": job.job_id,
-            "generator_id": job.generator_id,
+            "model_name": job.model_name,
+            "prompt_chain": job.prompt_chain,
+            "temperature": job.temperature,
+            "word_count": job.word_count,
         }),
     )
     .await;
@@ -221,6 +278,7 @@ async fn handle_get_job_list(
     ctx: State<ApiContext>,
     Query(req): Query<JobListRequest>,
 ) -> Result<Json<CommonResponse>> {
+    info!("handle_get_job_list: {:?}", req);
     let team_id = sqlx::query!(
         r#"select team_id from project where project_id = $1"#,
         req.project_id
@@ -249,6 +307,7 @@ async fn handle_get_job_list(
             generator_id,
             target_count,
             job_status "job_status: JobStatus",
+            model_name,
             prompt_chain,
             temperature,
             word_count,
@@ -275,6 +334,7 @@ async fn handle_operate_job(
     ctx: State<ApiContext>,
     Json(req): Json<JobBody<JobOperateRequest>>,
 ) -> Result<Json<CommonResponse>> {
+    info!("operate job: {:?}", req);
     let team_id = sqlx::query!(
         r#"select team_id from project where project_id = (select project_id from job where job_id = $1)"#,
         req.job.job_id
@@ -314,6 +374,51 @@ async fn handle_operate_job(
                 ("jobStatus", "This job is running or finished"),
             ]));
         } else {
+            let job = sqlx::query!(
+                // language=PostgreSQL
+                r#"select generator_id, prompt_chain, model_name, temperature, word_count
+                from job where job_id = $1"#,
+                req.job.job_id
+            )
+            .fetch_one(&ctx.db)
+            .await?;
+
+            let prompt_chain;
+            let model_name;
+            let temperature;
+            let word_count;
+
+            if job.generator_id.is_some() {
+                let generator = sqlx::query!(
+                    // language=PostgreSQL
+                    r#"select prompt_chain, model_name, temperature, word_count
+                    from generator where generator_id = $1"#,
+                    job.generator_id
+                )
+                .fetch_one(&ctx.db)
+                .await?;
+
+                prompt_chain = generator.prompt_chain;
+                model_name = generator.model_name;
+                temperature = generator.temperature;
+                word_count = generator.word_count;
+            } else {
+                if job.prompt_chain.is_none()
+                    || job.model_name.is_none()
+                    || job.temperature.is_none()
+                    || job.word_count.is_none()
+                {
+                    return Err(Error::unprocessable_entity([(
+                        "jobOperation",
+                        "You may operating a job created by old version of generator, please recreate the job.",
+                    )]));
+                }
+                prompt_chain = job.prompt_chain.unwrap();
+                model_name = job.model_name.unwrap();
+                temperature = job.temperature.unwrap();
+                word_count = job.word_count.unwrap();
+            }
+
             sqlx::query!(
                 // language=PostgreSQL
                 r#"update job set job_status = $1 where job_id = $2"#,
@@ -323,20 +428,14 @@ async fn handle_operate_job(
             .execute(&ctx.db)
             .await?;
 
-            let generator_id = sqlx::query!(
-                // language=PostgreSQL
-                r#"select generator_id from job where job_id = $1"#,
-                req.job.job_id
-            )
-            .fetch_one(&ctx.db)
-            .await?
-            .generator_id;
-
             queue::publish_message(
                 &queue::make_channel(&ctx.config.rabbitmq_url).await,
                 json!({
                     "job_id": req.job.job_id,
-                    "generator_id": generator_id,
+                    "model_name": model_name,
+                    "prompt_chain": prompt_chain,
+                    "temperature": temperature,
+                    "word_count": word_count,
                 }),
             )
             .await;
@@ -440,7 +539,7 @@ async fn handle_get_job_info(
     .ok_or_else(|| Error::Unauthorized)?;
 
     let job = sqlx::query_as!(
-        JobFullFromSql,
+        JobFromSql,
         // language=PostgreSQL
         r#"select
             job_id,
@@ -449,16 +548,14 @@ async fn handle_get_job_info(
             job.generator_id,
             target_count,
             job_status "job_status: JobStatus",
-            generator.model_name,
-            generator.prompt_chain,
-            generator.temperature,
-            generator.word_count,
-            generator.generator_name,
+            model_name,
+            prompt_chain,
+            temperature,
+            word_count,
             (select count(*) from datadrop where job_id = $1 and datadrop_content is not null) as finished_count,
             job.created_at "created_at: Timestamptz",
             job.updated_at "updated_at: Timestamptz"
         from job
-        left join generator on job.generator_id = generator.generator_id
         where job_id = $1"#,
         req.job_id
     )

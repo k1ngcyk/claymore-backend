@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "insert into job (project_id, job_name, generator_id, target_count) values ($1, $2, $3, $4) returning\n            job_id,\n            job_name,\n            project_id,\n            generator_id,\n            target_count,\n            job_status \"job_status: JobStatus\",\n            prompt_chain,\n            temperature,\n            word_count,\n            (select count(*) from datadrop where job_id = job.job_id and datadrop_content is not null) as finished_count,\n            created_at \"created_at: Timestamptz\",\n            updated_at \"updated_at: Timestamptz\"\n        ",
+  "query": "select\n            job_id,\n            job_name,\n            job.project_id,\n            job.generator_id,\n            target_count,\n            job_status \"job_status: JobStatus\",\n            model_name,\n            prompt_chain,\n            temperature,\n            word_count,\n            (select count(*) from datadrop where job_id = $1 and datadrop_content is not null) as finished_count,\n            job.created_at \"created_at: Timestamptz\",\n            job.updated_at \"updated_at: Timestamptz\"\n        from job\n        where job_id = $1",
   "describe": {
     "columns": [
       {
@@ -35,41 +35,43 @@
       },
       {
         "ordinal": 6,
+        "name": "model_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
         "name": "prompt_chain",
         "type_info": "Jsonb"
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "temperature",
         "type_info": "Float8"
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "word_count",
         "type_info": "Int4"
       },
       {
-        "ordinal": 9,
+        "ordinal": 10,
         "name": "finished_count",
         "type_info": "Int8"
       },
       {
-        "ordinal": 10,
+        "ordinal": 11,
         "name": "created_at: Timestamptz",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 11,
+        "ordinal": 12,
         "name": "updated_at: Timestamptz",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid",
-        "Text",
-        "Uuid",
-        "Int4"
+        "Uuid"
       ]
     },
     "nullable": [
@@ -82,10 +84,11 @@
       true,
       true,
       true,
+      true,
       null,
       false,
       true
     ]
   },
-  "hash": "04fb511f08f97d52d38929551c1c2b04178d7b9b4d420fda71828e8bbfeb22d0"
+  "hash": "fa88e997caacdd877f59ed8d15eb6ecc7e9f68bc1ed559fdd769fbb01d2baf20"
 }

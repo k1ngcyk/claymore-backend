@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select prompt_chain, temperature, word_count, model_name\n        from generator where generator_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "prompt_chain",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 1,
+        "name": "temperature",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 2,
+        "name": "word_count",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 3,
+        "name": "model_name",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "60d2b1e33ac7a399ffe1c33204a4c55053c0fdbacf9c59311b8742d1c04aac73"
+}

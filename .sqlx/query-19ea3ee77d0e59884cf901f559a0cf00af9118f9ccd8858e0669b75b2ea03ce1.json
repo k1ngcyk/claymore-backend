@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select\n            job_id,\n            job_name,\n            job.project_id,\n            job.generator_id,\n            target_count,\n            job_status \"job_status: JobStatus\",\n            generator.model_name,\n            generator.prompt_chain,\n            generator.temperature,\n            generator.word_count,\n            generator.generator_name,\n            (select count(*) from datadrop where job_id = $1 and datadrop_content is not null) as finished_count,\n            job.created_at \"created_at: Timestamptz\",\n            job.updated_at \"updated_at: Timestamptz\"\n        from job\n        left join generator on job.generator_id = generator.generator_id\n        where job_id = $1",
+  "query": "select\n            job_id,\n            job_name,\n            project_id,\n            generator_id,\n            target_count,\n            job_status \"job_status: JobStatus\",\n            model_name,\n            prompt_chain,\n            temperature,\n            word_count,\n            (select count(*) from datadrop where job_id = job.job_id and datadrop_content is not null) as finished_count,\n            created_at \"created_at: Timestamptz\",\n            updated_at \"updated_at: Timestamptz\"\n        from job where project_id = $1",
   "describe": {
     "columns": [
       {
@@ -55,21 +55,16 @@
       },
       {
         "ordinal": 10,
-        "name": "generator_name",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 11,
         "name": "finished_count",
         "type_info": "Int8"
       },
       {
-        "ordinal": 12,
+        "ordinal": 11,
         "name": "created_at: Timestamptz",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 13,
+        "ordinal": 12,
         "name": "updated_at: Timestamptz",
         "type_info": "Timestamptz"
       }
@@ -86,15 +81,14 @@
       true,
       false,
       false,
-      false,
-      false,
-      false,
-      false,
-      false,
+      true,
+      true,
+      true,
+      true,
       null,
       false,
       true
     ]
   },
-  "hash": "83ea62944c8f862143f8ef126b8c413d9ef08d7f087b346814ba6eea7208b88f"
+  "hash": "19ea3ee77d0e59884cf901f559a0cf00af9118f9ccd8858e0669b75b2ea03ce1"
 }
