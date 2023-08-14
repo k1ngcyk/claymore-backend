@@ -538,10 +538,20 @@ async fn handle_get_job_info(
     .await?
     .ok_or_else(|| Error::Unauthorized)?;
 
-    let job = sqlx::query_as!(
-        JobFromSql,
+    let generator_id = sqlx::query!(
         // language=PostgreSQL
-        r#"select
+        r#"select generator_id from job where job_id = $1"#,
+        req.job_id
+    )
+    .fetch_one(&ctx.db)
+    .await?
+    .generator_id;
+
+    if generator_id.is_none() {
+        let job = sqlx::query_as!(
+            JobFromSql,
+            // language=PostgreSQL
+            r#"select
             job_id,
             job_name,
             job.project_id,
@@ -555,18 +565,67 @@ async fn handle_get_job_info(
             (select count(*) from datadrop where job_id = $1 and datadrop_content is not null) as finished_count,
             job.created_at "created_at: Timestamptz",
             job.updated_at "updated_at: Timestamptz"
-        from job
-        where job_id = $1"#,
-        req.job_id
-    )
-    .fetch_one(&ctx.db)
-    .await?;
+            from job
+            where job_id = $1"#,
+            req.job_id
+        )
+        .fetch_one(&ctx.db)
+        .await?;
+        return Ok(Json(CommonResponse {
+            code: 200,
+            message: "success".to_string(),
+            data: json!({
+                "job": {
+                    "jobId": job.job_id,
+                    "jobName": job.job_name,
+                    "projectId": job.project_id,
+                    "generatorId": "",
+                    "generatorName": "",
+                    "targetCount": job.target_count,
+                    "jobStatus": job.job_status,
+                    "modelName": job.model_name,
+                    "promptChain": job.prompt_chain,
+                    "temperature": job.temperature,
+                    "wordCount": job.word_count,
+                    "finishedCount": job.finished_count,
+                    "createdAt": job.created_at,
+                    "updatedAt": job.updated_at,
+                },
+            }),
+        }));
+    } else {
+        let job = sqlx::query_as!(
+            JobFullFromSql,
+            // language=PostgreSQL
+            r#"select
+                job_id,
+                job_name,
+                job.project_id,
+                job.generator_id,
+                target_count,
+                job_status "job_status: JobStatus",
+                generator.model_name,
+                generator.prompt_chain,
+                generator.temperature,
+                generator.word_count,
+                generator.generator_name,
+                (select count(*) from datadrop where job_id = $1 and datadrop_content is not null) as finished_count,
+                job.created_at "created_at: Timestamptz",
+                job.updated_at "updated_at: Timestamptz"
+            from job
+            left join generator on job.generator_id = generator.generator_id
+            where job_id = $1"#,
+            req.job_id
+        )
+        .fetch_one(&ctx.db)
+        .await?;
 
-    Ok(Json(CommonResponse {
-        code: 200,
-        message: "success".to_string(),
-        data: json!({
-            "job": job,
-        }),
-    }))
+        return Ok(Json(CommonResponse {
+            code: 200,
+            message: "success".to_string(),
+            data: json!({
+                "job": job,
+            }),
+        }));
+    }
 }
