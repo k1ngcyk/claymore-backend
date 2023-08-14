@@ -1,0 +1,1 @@
+alter table job add column model_name text;

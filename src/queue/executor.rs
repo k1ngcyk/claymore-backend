@@ -50,19 +50,10 @@ pub async fn execute_job(db: PgPool, delivery: &Delivery) {
         return;
     }
 
-    let generator_id = message["generator_id"].as_str().unwrap();
-    let generator_id = Uuid::parse_str(generator_id).unwrap();
-    let generator = sqlx::query!(
-        r#"select model_name, word_count, prompt_chain, temperature from generator where generator_id = $1"#,
-        generator_id
-    )
-    .fetch_one(&db)
-    .await
-    .unwrap();
-    let model_name = generator.model_name;
-    let word_count = generator.word_count as u16;
-    let temperature = generator.temperature as f32;
-    let prompt_chain = generator.prompt_chain;
+    let model_name = message["model_name"].as_str().unwrap();
+    let word_count = message["word_count"].as_i64().unwrap() as u16;
+    let temperature = message["temperature"].as_f64().unwrap() as f32;
+    let prompt_chain = message["prompt_chain"].as_object().unwrap();
     let prompts = prompt_chain["prompts"].as_array().unwrap();
     let project_id = sqlx::query!(r#"select project_id from job where job_id = $1"#, job_id)
         .fetch_one(&db)
@@ -93,11 +84,15 @@ pub async fn execute_job(db: PgPool, delivery: &Delivery) {
         }
         let mut response = String::new();
         for prompt in prompts {
+            info!(
+                "Job {}: prompt: {} model_name: {}",
+                job_id, prompt, model_name
+            );
             let prompt = prompt.as_str().unwrap();
             let prompt = prompt.replace("^^", &response);
             let chat_request = CreateChatCompletionRequestArgs::default()
                 .max_tokens(word_count)
-                .model(&model_name)
+                .model(model_name)
                 .temperature(temperature)
                 .messages([ChatCompletionRequestMessageArgs::default()
                     .role(Role::User)
