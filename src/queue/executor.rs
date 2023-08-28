@@ -108,7 +108,7 @@ pub async fn execute_job(db: PgPool, delivery: &Delivery) -> Result<ExecuteResul
     .unwrap()
     .job_status;
     if job_status == JobStatus::Paused {
-        return Ok(ExecuteResult::Success);
+        return Ok(ExecuteResult::Overflow);
     }
     if job_status == JobStatus::Pending {
         sqlx::query!(
