@@ -1,8 +1,8 @@
 use lapin::{
     message::DeliveryResult,
     options::{
-        BasicAckOptions, BasicConsumeOptions, BasicPublishOptions, BasicQosOptions,
-        QueueDeclareOptions,
+        BasicAckOptions, BasicConsumeOptions, BasicNackOptions, BasicPublishOptions,
+        BasicQosOptions, QueueDeclareOptions,
     },
     publisher_confirm::Confirmation,
     types::FieldTable,
@@ -65,12 +65,35 @@ pub async fn start_consumer(db: PgPool, mq: Channel) {
                 }
             };
 
-            executor::execute_job(db, &delivery).await;
+            let result = match executor::execute_job(db, &delivery).await {
+                Ok(result) => result,
+                Err(error) => {
+                    log::error!("Execute job error: {}", error);
+                    delivery
+                        .ack(BasicAckOptions::default())
+                        .await
+                        .expect("Failed to ack message");
+                    return;
+                }
+            };
 
-            delivery
-                .ack(BasicAckOptions::default())
-                .await
-                .expect("Failed to ack message");
+            match result {
+                executor::ExecuteResult::Overflow => {
+                    delivery
+                        .ack(BasicAckOptions::default())
+                        .await
+                        .expect("Failed to ack message");
+                }
+                executor::ExecuteResult::Success => {
+                    delivery
+                        .nack(BasicNackOptions {
+                            multiple: false,
+                            requeue: true,
+                        })
+                        .await
+                        .expect("Failed to requeue message");
+                }
+            }
         }
     });
 }

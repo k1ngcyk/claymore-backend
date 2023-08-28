@@ -18,7 +18,12 @@ pub enum JobStatus {
     Paused,
 }
 
-pub async fn execute_job(db: PgPool, delivery: &Delivery) {
+pub enum ExecuteResult {
+    Overflow,
+    Success,
+}
+
+pub async fn execute_job(db: PgPool, delivery: &Delivery) -> Result<ExecuteResult, anyhow::Error> {
     let message = str::from_utf8(&delivery.data).unwrap();
     let message: Value = serde_json::from_str(message).unwrap();
     info!("Start execute job: {}", message);
@@ -47,7 +52,15 @@ pub async fn execute_job(db: PgPool, delivery: &Delivery) {
         job_id, finished_count, target_count
     );
     if finished_count >= target_count {
-        return;
+        sqlx::query!(
+            r#"update job set job_status = $1 where job_id = $2"#,
+            JobStatus::Finished as i32,
+            job_id
+        )
+        .execute(&db)
+        .await
+        .unwrap();
+        return Ok(ExecuteResult::Overflow);
     }
 
     let model_name;
@@ -84,59 +97,60 @@ pub async fn execute_job(db: PgPool, delivery: &Delivery) {
         .await
         .unwrap()
         .project_id;
-    for _ in finished_count..target_count {
-        let job_status = sqlx::query!(
-            r#"select job_status "job_status: JobStatus" from job where job_id = $1"#,
+    // Remove loop here, but nack message outside
+    // for _ in finished_count..target_count {
+    let job_status = sqlx::query!(
+        r#"select job_status "job_status: JobStatus" from job where job_id = $1"#,
+        job_id
+    )
+    .fetch_one(&db)
+    .await
+    .unwrap()
+    .job_status;
+    if job_status == JobStatus::Paused {
+        return Ok(ExecuteResult::Success);
+    }
+    if job_status == JobStatus::Pending {
+        sqlx::query!(
+            r#"update job set job_status = $1 where job_id = $2"#,
+            JobStatus::Running as i32,
             job_id
         )
-        .fetch_one(&db)
+        .execute(&db)
         .await
-        .unwrap()
-        .job_status;
-        if job_status == JobStatus::Paused {
-            return;
-        }
-        if job_status == JobStatus::Pending {
-            sqlx::query!(
-                r#"update job set job_status = $1 where job_id = $2"#,
-                JobStatus::Running as i32,
-                job_id
-            )
-            .execute(&db)
-            .await
-            .unwrap();
-        }
-        let mut response = String::new();
-        for prompt in prompts {
-            info!(
-                "Job {}: prompt: {} model_name: {}",
-                job_id, prompt, &model_name
-            );
-            let prompt = prompt.as_str().unwrap();
-            let prompt = prompt.replace("^^", &response);
-            let chat_request = CreateChatCompletionRequestArgs::default()
-                .max_tokens(word_count)
-                .model(&model_name)
-                .temperature(temperature)
-                .messages([ChatCompletionRequestMessageArgs::default()
-                    .role(Role::User)
-                    .content(format!(r#"{}"#, prompt))
-                    .build()
-                    .unwrap()])
+        .unwrap();
+    }
+    let mut response = String::new();
+    for prompt in prompts {
+        info!(
+            "Job {}: prompt: {} model_name: {}",
+            job_id, prompt, &model_name
+        );
+        let prompt = prompt.as_str().unwrap();
+        let prompt = prompt.replace("^^", &response);
+        let chat_request = CreateChatCompletionRequestArgs::default()
+            .max_tokens(word_count)
+            .model(&model_name)
+            .temperature(temperature)
+            .messages([ChatCompletionRequestMessageArgs::default()
+                .role(Role::User)
+                .content(format!(r#"{}"#, prompt))
                 .build()
-                .unwrap();
-            let gpt_response = client.chat().create(chat_request).await.unwrap();
-            let output = &gpt_response
-                .choices
-                .iter()
-                .filter(|x| x.message.role == Role::Assistant)
-                .next()
-                .unwrap()
-                .message
-                .content;
-            response = output.to_string();
-        }
-        let _result = sqlx::query!(
+                .unwrap()])
+            .build()
+            .unwrap();
+        let gpt_response = client.chat().create(chat_request).await.unwrap();
+        let output = &gpt_response
+            .choices
+            .iter()
+            .filter(|x| x.message.role == Role::Assistant)
+            .next()
+            .unwrap()
+            .message
+            .content;
+        response = output.to_string();
+    }
+    let _result = sqlx::query!(
             r#"insert into datadrop (job_id, datadrop_name, datadrop_content, project_id) values ($1, $2, $3, $4)"#,
             job_id,
             format!("Data {}", job_id),
@@ -146,13 +160,6 @@ pub async fn execute_job(db: PgPool, delivery: &Delivery) {
         .execute(&db)
         .await
         .unwrap();
-    }
-    sqlx::query!(
-        r#"update job set job_status = $1 where job_id = $2"#,
-        JobStatus::Finished as i32,
-        job_id
-    )
-    .execute(&db)
-    .await
-    .unwrap();
+    Ok(ExecuteResult::Success)
+    // }
 }
