@@ -82,8 +82,10 @@ struct DatadropFullFromSql {
     #[serde(skip_serializing_if = "Option::is_none")]
     updated_at: Option<Timestamptz>,
     job_name: String,
-    generator_id: Uuid,
-    generator_name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    generator_id: Option<Uuid>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    generator_name: Option<String>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -255,8 +257,8 @@ async fn handle_get_datadrop_list(
             job.job_name,
             generator.generator_id,
             generator_name,
-            datadrop.created_at "created_at: Timestamptz",
-            datadrop.updated_at "updated_at: Timestamptz"
+            datadrop.created_at,
+            datadrop.updated_at
         from datadrop
         left join job on datadrop.job_id = job.job_id
         left join generator on job.generator_id = generator.generator_id
