@@ -260,7 +260,7 @@ async fn handle_get_datadrop_list(
         from datadrop
         left join job on datadrop.job_id = job.job_id
         left join generator on job.generator_id = generator.generator_id
-        where datadrop.project_id = '{}' order by {} desc limit {} offset {}"#,
+        where datadrop.project_id = '{}' order by datadrop.{} desc limit {} offset {}"#,
         &req.project_id, order_by, page_size, offset
     );
 
