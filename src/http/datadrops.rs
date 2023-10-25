@@ -67,7 +67,7 @@ struct DatadropFromSql {
     updated_at: Option<Timestamptz>,
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, sqlx::FromRow)]
 #[serde(rename_all = "camelCase")]
 struct DatadropFullFromSql {
     datadrop_id: Uuid,
@@ -244,8 +244,7 @@ async fn handle_get_datadrop_list(
     .await?
     .count;
 
-    let datadrop_list = sqlx::query_as!(
-        DatadropFullFromSql,
+    let query = format!(
         r#"select
             datadrop_id,
             datadrop_name,
@@ -261,14 +260,11 @@ async fn handle_get_datadrop_list(
         from datadrop
         left join job on datadrop.job_id = job.job_id
         left join generator on job.generator_id = generator.generator_id
-        where datadrop.project_id = $1 order by $2 desc limit $3 offset $4"#,
-        req.project_id,
-        order_by,
-        page_size,
-        offset
-    )
-    .fetch_all(&ctx.db)
-    .await?;
+        where datadrop.project_id = '{}' order by {} desc limit {} offset {}"#,
+        &req.project_id, order_by, page_size, offset
+    );
+
+    let datadrop_list: Vec<DatadropFullFromSql> = sqlx::query_as(&query).fetch_all(&ctx.db).await?;
 
     Ok(Json(CommonResponse {
         code: 200,
