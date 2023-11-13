@@ -23,6 +23,7 @@ mod profile;
 mod projects;
 mod teams;
 mod users;
+mod v2;
 
 pub use error::{Error, ResultExt};
 
@@ -108,6 +109,7 @@ fn api_router(api_context: ApiContext) -> Router {
         .merge(datadrops::router())
         .merge(comments::router())
         .merge(feedback::router())
+        .merge(v2::router())
         // Enables logging. Use `RUST_LOG=tower_http=debug`
         .layer(TraceLayer::new_for_http())
         .with_state(api_context)

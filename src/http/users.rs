@@ -88,6 +88,14 @@ async fn create_user(
     .execute(&ctx.db)
     .await?;
 
+    sqlx::query!(
+        r#"insert into project (project_name, team_id) values ($1, $2)"#,
+        format!(r#"{}'s Personal Project"#, &req.user.username),
+        team_id
+    )
+    .execute(&ctx.db)
+    .await?;
+
     Ok(Json(CommonResponse {
         code: 200,
         message: "success".to_string(),
