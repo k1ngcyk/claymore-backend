@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update file_generator_v2 set finish_process = $1 where file_id = $2 and generator_id = $3",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Bool",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b05243f63e8b0cdb1af2464728fa9f7ce8a5e9f81da5f8cad844b17033866e1e"
+}
