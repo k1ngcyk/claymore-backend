@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select\n            file_v2.file_id,\n            file_v2.file_name,\n            file_generator_v2.finish_process\n        from file_generator_v2\n        left join file_v2 using (file_id)\n        where generator_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "file_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "file_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "finish_process",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "df70248af2c92091c8ce24b15d8d9dd3b290967da08a18a238624c2f27e7e4a2"
+}

@@ -268,12 +268,37 @@ async fn handle_get_generator_info(
     .fetch_all(&ctx.db)
     .await?;
 
+    let files = sqlx::query!(
+        r#"select
+            file_v2.file_id,
+            file_v2.file_name,
+            file_generator_v2.finish_process
+        from file_generator_v2
+        left join file_v2 using (file_id)
+        where generator_id = $1"#,
+        req.generator_id
+    )
+    .fetch_all(&ctx.db)
+    .await?;
+
+    let files = files
+        .iter()
+        .map(|x| {
+            json!({
+                "fileId": x.file_id,
+                "fileName": x.file_name,
+                "finishProcess": x.finish_process,
+            })
+        })
+        .collect::<Vec<serde_json::Value>>();
+
     Ok(Json(CommonResponse {
         code: 200,
         message: "success".to_string(),
         data: json!({
             "generator": generator,
             "datadrops": datadrops,
+            "files": files,
         }),
     }))
 }
@@ -923,7 +948,7 @@ async fn handle_run_generator(
 
         let response = request.send().await.unwrap();
         let body = response.json::<serde_json::Value>().await.unwrap();
-        log::info!("{:?}", body);
+        // log::info!("{:?}", body);
         let body = body.as_array().unwrap();
         for item in body {
             let input = item["text"].as_str().unwrap().to_string();

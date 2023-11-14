@@ -13,6 +13,8 @@ services:
     depends_on:
       - claymore-db
       - claymore-rabbitmq
+    volumes:
+      - /opt:/opt
 
   claymore-db:
     image: postgres:latest
