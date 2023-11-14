@@ -923,6 +923,7 @@ async fn handle_run_generator(
 
         let response = request.send().await.unwrap();
         let body = response.json::<serde_json::Value>().await.unwrap();
+        log::info!("{:?}", body);
         let body = body.as_array().unwrap();
         for item in body {
             let input = item["text"].as_str().unwrap().to_string();
