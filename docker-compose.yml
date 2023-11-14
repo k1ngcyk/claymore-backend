@@ -14,7 +14,7 @@ services:
       - claymore-db
       - claymore-rabbitmq
     volumes:
-      - /opt:/opt
+      - /opt/claymore:/var/claymore
 
   claymore-db:
     image: postgres:latest
