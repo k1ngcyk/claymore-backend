@@ -2,6 +2,7 @@ use crate::http::extractor::AuthUser;
 use crate::http::types::Timestamptz;
 use crate::http::ApiContext;
 use crate::http::{Error, Result, ResultExt};
+use crate::queue;
 use async_openai::{
     types::{ChatCompletionRequestMessageArgs, CreateChatCompletionRequestArgs, Role},
     Client,
@@ -12,6 +13,7 @@ use axum::{Json, Router};
 use log::info;
 use regex::Regex;
 use serde_json::json;
+use std::path::Path;
 use uuid::Uuid;
 
 use crate::http::CommonResponse;
@@ -26,6 +28,7 @@ pub(crate) fn router() -> Router<ApiContext> {
         .route("/v2/generator/try", post(handle_try_generator))
         .route("/v2/generator/save", post(handle_save_generator))
         .route("/v2/generator/reset", post(handle_reset_generator))
+        .route("/v2/generator/run", post(handle_run_generator))
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -79,12 +82,32 @@ struct GeneratorResetRequest {
 
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
+struct GeneratorRunRequest {
+    generator_id: Uuid,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct GeneratorFromSql {
     generator_id: Uuid,
     generator_name: String,
     template_id: Option<Uuid>,
     config_data: serde_json::Value,
     project_id: Uuid,
+    created_at: Timestamptz,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    updated_at: Option<Timestamptz>,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DatadropFromSql {
+    datadrop_id: Uuid,
+    datadrop_name: String,
+    datadrop_content: String,
+    generator_id: Option<Uuid>,
+    project_id: Uuid,
+    extra_data: Option<serde_json::Value>,
     created_at: Timestamptz,
     #[serde(skip_serializing_if = "Option::is_none")]
     updated_at: Option<Timestamptz>,
@@ -195,7 +218,7 @@ async fn handle_get_generator_info(
     Query(req): Query<GeneratorInfoRequest>,
 ) -> Result<Json<CommonResponse>> {
     let team_id = sqlx::query!(
-        r#"select team_id from project where project_id = (select project_id from generator where generator_id = $1)"#,
+        r#"select team_id from project where project_id = (select project_id from generator_v2 where generator_id = $1)"#,
         req.generator_id
     )
     .fetch_one(&ctx.db)
@@ -228,10 +251,30 @@ async fn handle_get_generator_info(
     .fetch_one(&ctx.db)
     .await?;
 
+    let datadrops = sqlx::query_as!(
+        DatadropFromSql,
+        r#"select
+            datadrop_id,
+            datadrop_name,
+            datadrop_content,
+            generator_id,
+            project_id,
+            extra_data,
+            created_at "created_at: Timestamptz",
+            updated_at "updated_at: Timestamptz"
+        from datadrop_v2 where generator_id = $1"#,
+        req.generator_id
+    )
+    .fetch_all(&ctx.db)
+    .await?;
+
     Ok(Json(CommonResponse {
         code: 200,
         message: "success".to_string(),
-        data: json!({ "generator": generator }),
+        data: json!({
+            "generator": generator,
+            "datadrops": datadrops,
+        }),
     }))
 }
 
@@ -773,5 +816,133 @@ async fn handle_reset_generator(
         code: 200,
         message: "success".to_string(),
         data: json!({ "generator": generator }),
+    }))
+}
+
+async fn handle_run_generator(
+    auth_user: AuthUser,
+    ctx: State<ApiContext>,
+    Json(req): Json<GeneratorBody<GeneratorRunRequest>>,
+) -> Result<Json<CommonResponse>> {
+    let generator_id = req.generator.generator_id;
+    let generator = sqlx::query!(
+        r#"select
+            project_id,
+            template_id
+        from generator_v2 where generator_id = $1"#,
+        generator_id
+    )
+    .fetch_one(&ctx.db)
+    .await?;
+    let team_id = sqlx::query!(
+        // language=PostgreSQL
+        r#"select team_id from project where project_id = $1"#,
+        generator.project_id
+    )
+    .fetch_one(&ctx.db)
+    .await?
+    .team_id;
+    let _member_record = sqlx::query!(
+        // language=PostgreSQL
+        r#"select user_level from team_member where team_id = $1 and user_id = $2"#,
+        team_id,
+        auth_user.user_id
+    )
+    .fetch_optional(&ctx.db)
+    .await?
+    .ok_or_else(|| Error::Unauthorized)?;
+
+    if _member_record.user_level > 1 {
+        return Err(Error::Unauthorized);
+    }
+
+    let generator_config = sqlx::query!(
+        r#"select
+            config_data
+        from generator_v2 where generator_id = $1"#,
+        generator_id
+    )
+    .fetch_one(&ctx.db)
+    .await?
+    .config_data;
+
+    let generator_config = generator_config.as_object().unwrap();
+    let mut prompt = generator_config["prompt"].as_str().unwrap().to_string();
+    let keys = generator_config["keys"].as_array().unwrap();
+    let key_configs = &generator_config["keyConfigs"];
+    for key in keys {
+        let key = key.as_str().unwrap();
+        let key_config = key_configs[key].as_object().unwrap();
+        prompt = prompt.replace(
+            &format!("@key/{}", key),
+            key_config["value"].as_str().unwrap(),
+        );
+    }
+
+    let files = sqlx::query!(
+        r#"select
+            file_v2.file_id,
+            finish_process,
+            file_v2.file_path,
+            file_v2.file_name
+        from file_generator_v2
+        left join file_v2 on file_v2.file_id = file_generator_v2.file_id
+        where generator_id = $1"#,
+        generator_id
+    )
+    .fetch_all(&ctx.db)
+    .await?;
+
+    for file in files {
+        if file.finish_process {
+            continue;
+        }
+        let file_path = Path::new(&ctx.config.upload_dir).join(&file.file_path);
+        let client = reqwest::Client::builder().build().unwrap();
+
+        let mut headers = reqwest::header::HeaderMap::new();
+        headers.insert("Accept", "application/json".parse().unwrap());
+
+        let form = reqwest::multipart::Form::new()
+            .part(
+                "files",
+                reqwest::multipart::Part::bytes(std::fs::read(file_path).unwrap())
+                    .file_name(file.file_name),
+            )
+            .text("strategy", "auto")
+            .text("chunking_strategy", "by_title")
+            .text("combine_under_n_chars", "750");
+
+        let request = client
+            .request(
+                reqwest::Method::POST,
+                format!("{}/general/v0/general", &ctx.config.unstructured_url),
+            )
+            .headers(headers)
+            .multipart(form);
+
+        let response = request.send().await.unwrap();
+        let body = response.json::<serde_json::Value>().await.unwrap();
+        let body = body.as_array().unwrap();
+        for item in body {
+            let input = item["text"].as_str().unwrap().to_string();
+            queue::publish_message_v2(
+                &queue::make_channel(&ctx.config.rabbitmq_url).await,
+                json!({
+                    "generator_id": generator_id,
+                    "file_id": file.file_id,
+                    "project_id": generator.project_id,
+                    "input": input,
+                    "prompt": prompt,
+                }),
+            )
+            .await;
+        }
+    }
+
+    Ok(Json(CommonResponse {
+        code: 200,
+        message: "success".to_string(),
+        data: json!({}),
     }))
 }

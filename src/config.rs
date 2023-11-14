@@ -18,4 +18,7 @@ pub struct Config {
 
     #[clap(long, env)]
     pub rabbitmq_url: String,
+
+    #[clap(long, env)]
+    pub unstructured_url: String,
 }

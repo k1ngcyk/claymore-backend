@@ -35,6 +35,13 @@ services:
       - claymore_backend_network
     volumes:
       - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+  
+  claymore-unstructured:
+    image: downloads.unstructured.io/unstructured-io/unstructured-api:latest
+    restart: always
+    networks:
+      - claymore_backend_network
+    command: --port 8000 --host 0.0.0.0
 
 networks:
   claymore_backend_network:

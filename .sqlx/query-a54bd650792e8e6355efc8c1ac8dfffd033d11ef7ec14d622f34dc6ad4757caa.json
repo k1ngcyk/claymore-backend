@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select team_id from team_member where user_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "team_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "a54bd650792e8e6355efc8c1ac8dfffd033d11ef7ec14d622f34dc6ad4757caa"
+}

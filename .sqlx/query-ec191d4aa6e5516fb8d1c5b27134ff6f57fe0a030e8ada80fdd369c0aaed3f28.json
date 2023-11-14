@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "insert into file_generator_v2 (generator_id, file_id) values ($1, $2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ec191d4aa6e5516fb8d1c5b27134ff6f57fe0a030e8ada80fdd369c0aaed3f28"
+}

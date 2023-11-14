@@ -24,6 +24,11 @@ pub enum ExecuteResult {
     Success,
 }
 
+pub enum ExecuteResultV2 {
+    Success,
+    Failed,
+}
+
 pub async fn execute_job(db: PgPool, delivery: &Delivery) -> Result<ExecuteResult, anyhow::Error> {
     let message = str::from_utf8(&delivery.data).unwrap();
     let message: Value = serde_json::from_str(message).unwrap();
@@ -297,4 +302,73 @@ pub async fn execute_job(db: PgPool, delivery: &Delivery) -> Result<ExecuteResul
         .unwrap();
     Ok(ExecuteResult::Success)
     // }
+}
+
+pub async fn execute_job_v2(
+    db: PgPool,
+    delivery: &Delivery,
+) -> Result<ExecuteResultV2, anyhow::Error> {
+    let message = str::from_utf8(&delivery.data).unwrap();
+    let message: Value = serde_json::from_str(message).unwrap();
+    let generator_id = message["generator_id"].as_str().unwrap();
+    let generator_id = Uuid::parse_str(generator_id).unwrap();
+    let project_id = message["project_id"].as_str().unwrap();
+    let project_id = Uuid::parse_str(project_id).unwrap();
+    let file_id = message["file_id"].as_str().unwrap();
+    let file_id = Uuid::parse_str(file_id).unwrap();
+    let input = message["input"].as_str().unwrap();
+    let input = input.to_string();
+    let prompt = message["prompt"].as_str().unwrap();
+    let prompt = prompt.to_string();
+    let prompt = prompt.replace("@key/input", &input);
+    let client = Client::new();
+    let chat_request = CreateChatCompletionRequestArgs::default()
+        .max_tokens(2048u16)
+        .model("gpt-3.5-turbo")
+        .temperature(0.1)
+        .messages([ChatCompletionRequestMessageArgs::default()
+            .role(Role::User)
+            .content(format!(r#"{}"#, prompt))
+            .build()
+            .unwrap()])
+        .build()
+        .unwrap();
+    let gpt_response = client.chat().create(chat_request).await;
+    if gpt_response.is_err() {
+        return Ok(ExecuteResultV2::Failed);
+    }
+    let gpt_response = gpt_response.unwrap();
+    let output = &gpt_response
+        .choices
+        .iter()
+        .filter(|x| x.message.role == Role::Assistant)
+        .next()
+        .unwrap()
+        .message
+        .content;
+    let _result = sqlx::query!(
+        r#"insert into datadrop_v2 (datadrop_name, datadrop_content, generator_id, project_id, extra_data) values ($1, $2, $3, $4, $5)"#,
+        format!("Data {}", generator_id),
+        output,
+        generator_id,
+        project_id,
+        serde_json::json!({
+            "text": input,
+        })
+    )
+    .execute(&db)
+    .await
+    .unwrap();
+
+    sqlx::query!(
+        r#"update file_generator_v2 set finish_process = $1 where file_id = $2 and generator_id = $3"#,
+        true,
+        file_id,
+        generator_id
+    )
+    .execute(&db)
+    .await
+    .unwrap();
+
+    Ok(ExecuteResultV2::Success)
 }
