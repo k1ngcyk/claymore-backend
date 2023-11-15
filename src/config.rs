@@ -21,4 +21,7 @@ pub struct Config {
 
     #[clap(long, env)]
     pub unstructured_url: String,
+
+    #[clap(long, env)]
+    pub es_url: String,
 }

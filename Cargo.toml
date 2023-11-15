@@ -13,6 +13,7 @@ async-trait = "0.1.68"
 axum = { version = "0.6.12", features = ["tower-log", "multipart"] }
 clap = { version = "4.2.1", features = ["env", "derive"] }
 dotenv = "0.15.0"
+elasticsearch = "8.5.0-alpha.1"
 env_logger = "0.10.0"
 futures = "0.3.28"
 hmac = "0.12.1"
