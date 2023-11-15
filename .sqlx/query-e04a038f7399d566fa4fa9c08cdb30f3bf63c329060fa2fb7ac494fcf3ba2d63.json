@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select\n            datadrop_id,\n            datadrop_content\n        from datadrop_v2\n        where generator_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "datadrop_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "datadrop_content",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "e04a038f7399d566fa4fa9c08cdb30f3bf63c329060fa2fb7ac494fcf3ba2d63"
+}

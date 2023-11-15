@@ -148,12 +148,13 @@ async fn handle_new_generator(
     }
 
     let generator_config;
-    if let Some(generator_id) = req.generator.template_id {
+    let evaluator_config;
+    if let Some(template_id) = req.generator.template_id {
         let template = sqlx::query!(
             r#"select
                 template_data
             from template_v2 where template_id = $1"#,
-            generator_id
+            template_id
         )
         .fetch_one(&ctx.db)
         .await?;
@@ -176,6 +177,30 @@ async fn handle_new_generator(
                 }),
             );
         }
+        let evaluator_data = template_data["evaluator"].as_object().unwrap();
+        let evaluator_keys = evaluator_data["keys"].as_array().unwrap();
+        let evaluator_prompt = evaluator_data["prompt"].as_str().unwrap();
+        let evaluator_key_configs = &evaluator_data["keyConfigs"];
+        let mut evaluator_map = serde_json::Map::new();
+        for key in evaluator_keys {
+            let key = key.as_str().unwrap();
+            let key_config = evaluator_key_configs[key].as_object().unwrap();
+            let key_display_name = key_config["displayName"].as_str().unwrap();
+            let key_hint = key_config["hint"].as_str().unwrap();
+            evaluator_map.insert(
+                key.to_string(),
+                json!({
+                    "displayName": key_display_name,
+                    "hint": key_hint,
+                    "value": "",
+                }),
+            );
+        }
+        evaluator_config = json!({
+            "prompt": evaluator_prompt,
+            "keys": evaluator_keys,
+            "keyConfigs": serde_json::Value::Object(evaluator_map),
+        });
         generator_config = json!({
             "prompt": prompt,
             "input": "",
@@ -189,6 +214,11 @@ async fn handle_new_generator(
             "keys": [],
             "keyConfigs": {},
         });
+        evaluator_config = json!({
+            "prompt": "",
+            "keys": [],
+            "keyConfigs": {},
+        });
     }
 
     let generator = sqlx::query!(
@@ -199,6 +229,18 @@ async fn handle_new_generator(
         req.generator.template_id,
         generator_config,
         req.generator.project_id
+    )
+    .fetch_one(&ctx.db)
+    .await?;
+
+    let evaluator = sqlx::query!(
+        // language=PostgreSQL
+        r#"insert into evaluator_v2 (template_id, config_data, project_id, generator_id)
+        values ($1, $2, $3, $4) returning evaluator_id"#,
+        req.generator.template_id,
+        evaluator_config,
+        req.generator.project_id,
+        generator.generator_id
     )
     .fetch_one(&ctx.db)
     .await?;
@@ -281,6 +323,16 @@ async fn handle_get_generator_info(
     .fetch_all(&ctx.db)
     .await?;
 
+    let evaluator = sqlx::query!(
+        r#"select
+            evaluator_id,
+            config_data
+        from evaluator_v2 where generator_id = $1"#,
+        req.generator_id
+    )
+    .fetch_one(&ctx.db)
+    .await?;
+
     let files = files
         .iter()
         .map(|x| {
@@ -299,6 +351,10 @@ async fn handle_get_generator_info(
             "generator": generator,
             "datadrops": datadrops,
             "files": files,
+            "evaluator": {
+                "evaluatorId": evaluator.evaluator_id,
+                "configData": evaluator.config_data,
+            },
         }),
     }))
 }

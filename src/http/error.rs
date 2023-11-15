@@ -90,6 +90,9 @@ pub enum Error {
 
     #[error("an error occurred with pdf extract")]
     Pdf(#[from] pdf_extract::OutputError),
+
+    #[error("an error occurred with elastic search")]
+    ElasticSearch(#[from] elasticsearch::Error),
 }
 
 impl Error {
@@ -121,9 +124,12 @@ impl Error {
             Self::Forbidden => StatusCode::FORBIDDEN,
             Self::NotFound => StatusCode::NOT_FOUND,
             Self::UnprocessableEntity { .. } => StatusCode::UNPROCESSABLE_ENTITY,
-            Self::Sqlx(_) | Self::Anyhow(_) | Self::OpenAI(_) | Self::StdIO(_) | Self::Pdf(_) => {
-                StatusCode::INTERNAL_SERVER_ERROR
-            }
+            Self::Sqlx(_)
+            | Self::Anyhow(_)
+            | Self::OpenAI(_)
+            | Self::StdIO(_)
+            | Self::Pdf(_)
+            | Self::ElasticSearch(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 
@@ -137,6 +143,7 @@ impl Error {
                 "an internal server error occurred".to_string()
             }
             Self::Anyhow(err) => err.to_string(),
+            Self::ElasticSearch(err) => err.to_string(),
         }
     }
 }

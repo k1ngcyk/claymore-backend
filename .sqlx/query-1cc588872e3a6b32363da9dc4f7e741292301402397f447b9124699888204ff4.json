@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select\n            evaluator_id,\n            config_data\n        from evaluator_v2 where generator_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "evaluator_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "config_data",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "1cc588872e3a6b32363da9dc4f7e741292301402397f447b9124699888204ff4"
+}

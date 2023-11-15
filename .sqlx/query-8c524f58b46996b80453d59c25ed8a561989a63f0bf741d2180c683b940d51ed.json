@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "insert into evaluator_v2 (template_id, config_data, project_id, generator_id)\n        values ($1, $2, $3, $4) returning evaluator_id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "evaluator_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Jsonb",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "8c524f58b46996b80453d59c25ed8a561989a63f0bf741d2180c683b940d51ed"
+}
