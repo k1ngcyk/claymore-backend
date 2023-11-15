@@ -52,6 +52,34 @@ async fn handle_chat(
     Json(req): Json<ChatBody<ChatRequest>>,
 ) -> Result<Json<CommonResponse>> {
     let generator_id = req.chat.generator_id;
+    let project_id = sqlx::query!(
+        // language=PostgreSQL
+        r#"select project_id from generator_v2 where generator_id = $1"#,
+        generator_id
+    )
+    .fetch_one(&ctx.db)
+    .await?
+    .project_id;
+
+    let team_id = sqlx::query!(
+        // language=PostgreSQL
+        r#"select team_id from project where project_id = $1"#,
+        project_id
+    )
+    .fetch_one(&ctx.db)
+    .await?
+    .team_id;
+
+    let _member_record = sqlx::query!(
+        // language=PostgreSQL
+        r#"select user_level from team_member where team_id = $1 and user_id = $2"#,
+        team_id,
+        auth_user.user_id
+    )
+    .fetch_optional(&ctx.db)
+    .await?
+    .ok_or_else(|| Error::Unauthorized)?;
+
     let user_input = req.chat.user_input;
     let chat_history = req.chat.chat_history;
     let new_history = chat_history.clone();

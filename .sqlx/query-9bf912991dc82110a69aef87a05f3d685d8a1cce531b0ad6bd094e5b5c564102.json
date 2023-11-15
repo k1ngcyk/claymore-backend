@@ -1,0 +1,35 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update evaluator_v2 set config_data = $1 where evaluator_id = $2\n        returning\n            evaluator_id,\n            template_id,\n            config_data\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "evaluator_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "template_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "config_data",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Jsonb",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "9bf912991dc82110a69aef87a05f3d685d8a1cce531b0ad6bd094e5b5c564102"
+}
