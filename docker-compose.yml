@@ -41,6 +41,8 @@ services:
   claymore-unstructured:
     image: downloads.unstructured.io/unstructured-io/unstructured-api:latest
     restart: always
+    environment:
+      - UNSTRUCTURED_MEMORY_FREE_MINIMUM_MB=256
     networks:
       - claymore_backend_network
     command: --port 8000 --host 0.0.0.0
