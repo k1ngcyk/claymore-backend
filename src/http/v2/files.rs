@@ -58,8 +58,6 @@ async fn handle_file_upload(
             fs::create_dir(&ctx.config.upload_dir).await?;
         }
         let file_path = Path::new(&ctx.config.upload_dir).join(&file_path_store);
-        log::info!("{:?}", file_path);
-        let mut file = fs::File::create(&file_path).await.unwrap();
         let field_data = field.bytes().await.unwrap();
         let file_md5 = format!("{:x}", md5::compute(&field_data));
         let team_id = sqlx::query!(
@@ -133,6 +131,7 @@ async fn handle_file_upload(
         )
         .fetch_one(&ctx.db)
         .await?;
+        let mut file = fs::File::create(&file_path).await.unwrap();
         file.write_all(&field_data).await.unwrap();
         let file_id = file_from_query.file_id;
         if let Some(generator_id) = generator_id {
