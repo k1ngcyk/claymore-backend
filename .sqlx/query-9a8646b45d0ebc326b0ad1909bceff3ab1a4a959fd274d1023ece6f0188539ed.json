@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "insert into usage_v2 (team_id, project_id, generator_id, user_id, token_count) values ($1, $2, $3, $4, $5)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9a8646b45d0ebc326b0ad1909bceff3ab1a4a959fd274d1023ece6f0188539ed"
+}

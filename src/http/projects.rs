@@ -94,7 +94,7 @@ async fn handle_new_project(
     .await?;
 
     Ok(Json(CommonResponse {
-        code: 0,
+        code: 200,
         message: "success".to_string(),
         data: json!({
             "project_id": project.project_id,
@@ -139,7 +139,7 @@ async fn handle_get_project_list(
     .await?;
 
     Ok(Json(CommonResponse {
-        code: 0,
+        code: 200,
         message: "success".to_string(),
         data: json!({
             "projects": projects,

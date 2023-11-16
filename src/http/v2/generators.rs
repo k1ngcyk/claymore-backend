@@ -14,6 +14,7 @@ use log::info;
 use regex::Regex;
 use serde_json::json;
 use std::path::Path;
+use tiktoken_rs::cl100k_base;
 use uuid::Uuid;
 
 use crate::http::CommonResponse;
@@ -468,6 +469,19 @@ async fn handle_try_generator(
         );
     }
     prompt = prompt.replace("@key/input", &input);
+    let bpe = cl100k_base().unwrap();
+    let tokens = bpe.encode_with_special_tokens(&prompt);
+    sqlx::query!(
+        r#"insert into usage_v2 (team_id, project_id, generator_id, user_id, token_count) values ($1, $2, $3, $4, $5)"#,
+        team_id,
+        generator.project_id,
+        generator_id,
+        auth_user.user_id,
+        tokens.len() as i32
+    )
+    .execute(&ctx.db)
+    .await?;
+
     let client = Client::new();
     let chat_request = CreateChatCompletionRequestArgs::default()
         .max_tokens(2048 as u16)
@@ -488,6 +502,18 @@ async fn handle_try_generator(
         .unwrap()
         .message
         .content;
+
+    let tokens = bpe.encode_with_special_tokens(&output);
+    sqlx::query!(
+        r#"insert into usage_v2 (team_id, project_id, generator_id, user_id, token_count) values ($1, $2, $3, $4, $5)"#,
+        team_id,
+        generator.project_id,
+        generator_id,
+        auth_user.user_id,
+        tokens.len() as i32
+    )
+    .execute(&ctx.db)
+    .await?;
 
     Ok(Json(CommonResponse {
         code: 200,
@@ -1016,6 +1042,8 @@ async fn handle_run_generator(
                     "project_id": generator.project_id,
                     "input": input,
                     "prompt": prompt,
+                    "team_id": team_id,
+                    "user_id": auth_user.user_id,
                 }),
             )
             .await;
