@@ -14,6 +14,7 @@ use log::info;
 use regex::Regex;
 use serde_json::json;
 use std::path::Path;
+use tiktoken_rs::cl100k_base;
 use uuid::Uuid;
 
 use crate::http::CommonResponse;
@@ -29,6 +30,7 @@ pub(crate) fn router() -> Router<ApiContext> {
         .route("/v2/generator/save", post(handle_save_generator))
         .route("/v2/generator/reset", post(handle_reset_generator))
         .route("/v2/generator/run", post(handle_run_generator))
+        .route("/v2/generator/clearFiles", post(handle_clear_files))
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -83,6 +85,12 @@ struct GeneratorResetRequest {
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct GeneratorRunRequest {
+    generator_id: Uuid,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct GeneratorClearFilesRequest {
     generator_id: Uuid,
 }
 
@@ -468,6 +476,19 @@ async fn handle_try_generator(
         );
     }
     prompt = prompt.replace("@key/input", &input);
+    let bpe = cl100k_base().unwrap();
+    let tokens = bpe.encode_with_special_tokens(&prompt);
+    sqlx::query!(
+        r#"insert into usage_v2 (team_id, project_id, generator_id, user_id, token_count) values ($1, $2, $3, $4, $5)"#,
+        team_id,
+        generator.project_id,
+        generator_id,
+        auth_user.user_id,
+        tokens.len() as i32
+    )
+    .execute(&ctx.db)
+    .await?;
+
     let client = Client::new();
     let chat_request = CreateChatCompletionRequestArgs::default()
         .max_tokens(2048 as u16)
@@ -488,6 +509,18 @@ async fn handle_try_generator(
         .unwrap()
         .message
         .content;
+
+    let tokens = bpe.encode_with_special_tokens(&output);
+    sqlx::query!(
+        r#"insert into usage_v2 (team_id, project_id, generator_id, user_id, token_count) values ($1, $2, $3, $4, $5)"#,
+        team_id,
+        generator.project_id,
+        generator_id,
+        auth_user.user_id,
+        tokens.len() as i32
+    )
+    .execute(&ctx.db)
+    .await?;
 
     Ok(Json(CommonResponse {
         code: 200,
@@ -1016,11 +1049,64 @@ async fn handle_run_generator(
                     "project_id": generator.project_id,
                     "input": input,
                     "prompt": prompt,
+                    "team_id": team_id,
+                    "user_id": auth_user.user_id,
                 }),
             )
             .await;
         }
     }
+
+    Ok(Json(CommonResponse {
+        code: 200,
+        message: "success".to_string(),
+        data: json!({}),
+    }))
+}
+
+async fn handle_clear_files(
+    auth_user: AuthUser,
+    ctx: State<ApiContext>,
+    Json(req): Json<GeneratorBody<GeneratorClearFilesRequest>>,
+) -> Result<Json<CommonResponse>> {
+    let generator_id = req.generator.generator_id;
+    let generator = sqlx::query!(
+        r#"select
+            project_id,
+            template_id
+        from generator_v2 where generator_id = $1"#,
+        generator_id
+    )
+    .fetch_one(&ctx.db)
+    .await?;
+    let team_id = sqlx::query!(
+        // language=PostgreSQL
+        r#"select team_id from project where project_id = $1"#,
+        generator.project_id
+    )
+    .fetch_one(&ctx.db)
+    .await?
+    .team_id;
+    let _member_record = sqlx::query!(
+        // language=PostgreSQL
+        r#"select user_level from team_member where team_id = $1 and user_id = $2"#,
+        team_id,
+        auth_user.user_id
+    )
+    .fetch_optional(&ctx.db)
+    .await?
+    .ok_or_else(|| Error::Unauthorized)?;
+
+    if _member_record.user_level > 1 {
+        return Err(Error::Unauthorized);
+    }
+
+    sqlx::query!(
+        r#"delete from file_generator_v2 where generator_id = $1 and finish_process = false"#,
+        generator_id
+    )
+    .execute(&ctx.db)
+    .await?;
 
     Ok(Json(CommonResponse {
         code: 200,

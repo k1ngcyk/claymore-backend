@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "delete from file_generator_v2 where generator_id = $1 and finish_process = false",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e9e53a6eb1bd2a15aa12c4484692a9019d403fb003f9111bfa1e55974f8ef967"
+}
