@@ -30,6 +30,7 @@ pub(crate) fn router() -> Router<ApiContext> {
         .route("/v2/generator/save", post(handle_save_generator))
         .route("/v2/generator/reset", post(handle_reset_generator))
         .route("/v2/generator/run", post(handle_run_generator))
+        .route("/v2/generator/clearFiles", post(handle_clear_files))
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -84,6 +85,12 @@ struct GeneratorResetRequest {
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct GeneratorRunRequest {
+    generator_id: Uuid,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct GeneratorClearFilesRequest {
     generator_id: Uuid,
 }
 
@@ -1049,6 +1056,57 @@ async fn handle_run_generator(
             .await;
         }
     }
+
+    Ok(Json(CommonResponse {
+        code: 200,
+        message: "success".to_string(),
+        data: json!({}),
+    }))
+}
+
+async fn handle_clear_files(
+    auth_user: AuthUser,
+    ctx: State<ApiContext>,
+    Json(req): Json<GeneratorBody<GeneratorClearFilesRequest>>,
+) -> Result<Json<CommonResponse>> {
+    let generator_id = req.generator.generator_id;
+    let generator = sqlx::query!(
+        r#"select
+            project_id,
+            template_id
+        from generator_v2 where generator_id = $1"#,
+        generator_id
+    )
+    .fetch_one(&ctx.db)
+    .await?;
+    let team_id = sqlx::query!(
+        // language=PostgreSQL
+        r#"select team_id from project where project_id = $1"#,
+        generator.project_id
+    )
+    .fetch_one(&ctx.db)
+    .await?
+    .team_id;
+    let _member_record = sqlx::query!(
+        // language=PostgreSQL
+        r#"select user_level from team_member where team_id = $1 and user_id = $2"#,
+        team_id,
+        auth_user.user_id
+    )
+    .fetch_optional(&ctx.db)
+    .await?
+    .ok_or_else(|| Error::Unauthorized)?;
+
+    if _member_record.user_level > 1 {
+        return Err(Error::Unauthorized);
+    }
+
+    sqlx::query!(
+        r#"delete from file_generator_v2 where generator_id = $1 and finish_process = false"#,
+        generator_id
+    )
+    .execute(&ctx.db)
+    .await?;
 
     Ok(Json(CommonResponse {
         code: 200,
