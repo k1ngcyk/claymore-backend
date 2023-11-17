@@ -1207,7 +1207,7 @@ async fn handle_evaluate_generator(
     for datadrop in datadrops {
         let input = datadrop.datadrop_content;
         let extra_data = datadrop.extra_data.unwrap_or(json!({"text": ""}));
-        let reference = extra_data.as_str().unwrap();
+        let reference = extra_data["text"].as_str().unwrap();
         queue::publish_message_v2_evaluate(
             &queue::make_channel(&ctx.config.rabbitmq_url).await,
             json!({
