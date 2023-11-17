@@ -409,3 +409,91 @@ pub async fn execute_job_v2(
 
     Ok(ExecuteResultV2::Success)
 }
+
+pub async fn execute_job_v2_evaluate(
+    db: PgPool,
+    delivery: &Delivery,
+) -> Result<ExecuteResultV2, anyhow::Error> {
+    let message = str::from_utf8(&delivery.data).unwrap();
+    let message: Value = serde_json::from_str(message).unwrap();
+    let generator_id = message["generator_id"].as_str().unwrap();
+    let generator_id = Uuid::parse_str(generator_id).unwrap();
+    let datadrop_id = message["datadrop_id"].as_str().unwrap();
+    let datadrop_id = Uuid::parse_str(datadrop_id).unwrap();
+    let project_id = message["project_id"].as_str().unwrap();
+    let project_id = Uuid::parse_str(project_id).unwrap();
+    let input = message["input"].as_str().unwrap();
+    let input = input.to_string();
+    let prompt = message["prompt"].as_str().unwrap();
+    let prompt = prompt.to_string();
+    let prompt = prompt.replace("@key/input", &input);
+    let team_id = message["team_id"].as_str().unwrap();
+    let team_id = Uuid::parse_str(team_id).unwrap();
+    let user_id = message["user_id"].as_str().unwrap();
+    let user_id = Uuid::parse_str(user_id).unwrap();
+    let reference = message["reference"].as_str().unwrap();
+    let reference = reference.to_string();
+    let prompt = prompt.replace("@key/reference", &reference);
+    let bpe = cl100k_base().unwrap();
+    let client = Client::new();
+    let chat_request = CreateChatCompletionRequestArgs::default()
+        .max_tokens(2048u16)
+        .model("gpt-4")
+        .temperature(0.1)
+        .messages([ChatCompletionRequestMessageArgs::default()
+            .role(Role::User)
+            .content(format!(r#"{}"#, prompt))
+            .build()
+            .unwrap()])
+        .build()
+        .unwrap();
+    let tokens = bpe.encode_with_special_tokens(&prompt);
+    sqlx::query!(
+        r#"insert into usage_v2 (team_id, project_id, generator_id, user_id, token_count) values ($1, $2, $3, $4, $5)"#,
+        team_id,
+        project_id,
+        generator_id,
+        user_id,
+        tokens.len() as i32
+    )
+    .execute(&db)
+    .await
+    .unwrap();
+
+    let gpt_response = client.chat().create(chat_request).await;
+    if gpt_response.is_err() {
+        return Ok(ExecuteResultV2::Failed);
+    }
+    let gpt_response = gpt_response.unwrap();
+    let output = &gpt_response
+        .choices
+        .iter()
+        .filter(|x| x.message.role == Role::Assistant)
+        .next()
+        .unwrap()
+        .message
+        .content;
+    let tokens = bpe.encode_with_special_tokens(&output);
+    sqlx::query!(
+        r#"insert into usage_v2 (team_id, project_id, generator_id, user_id, token_count) values ($1, $2, $3, $4, $5)"#,
+        team_id,
+        project_id,
+        generator_id,
+        user_id,
+        tokens.len() as i32
+    )
+    .execute(&db)
+    .await
+    .unwrap();
+
+    let _result = sqlx::query!(
+        r#"update datadrop_v2 set extra_data['evaluate'] = to_jsonb($1::text) where datadrop_id = $2"#,
+        output,
+        datadrop_id
+    )
+    .execute(&db)
+    .await
+    .unwrap();
+
+    Ok(ExecuteResultV2::Success)
+}

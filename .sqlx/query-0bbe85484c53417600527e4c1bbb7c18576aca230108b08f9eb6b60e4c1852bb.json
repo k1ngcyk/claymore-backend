@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update datadrop_v2 set extra_data['evaluate'] = to_jsonb($1::text) where datadrop_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0bbe85484c53417600527e4c1bbb7c18576aca230108b08f9eb6b60e4c1852bb"
+}
