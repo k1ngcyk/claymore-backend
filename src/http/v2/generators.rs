@@ -1025,7 +1025,7 @@ async fn handle_run_generator(
             )
             .text("strategy", "auto")
             .text("chunking_strategy", "by_title")
-            .text("combine_under_n_chars", "750");
+            .text("combine_under_n_chars", "500");
 
         let request = client
             .request(

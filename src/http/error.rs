@@ -139,7 +139,8 @@ impl Error {
             Self::Forbidden => "user may not perform that action".to_string(),
             Self::NotFound => "request path not found".to_string(),
             Self::UnprocessableEntity { .. } => "error in the request body".to_string(),
-            Self::Sqlx(_) | Self::OpenAI(_) | Self::StdIO(_) | Self::Pdf(_) => {
+            Self::Sqlx(err) => err.to_string(),
+            Self::OpenAI(_) | Self::StdIO(_) | Self::Pdf(_) => {
                 "an internal server error occurred".to_string()
             }
             Self::Anyhow(err) => err.to_string(),
@@ -155,7 +156,7 @@ impl Error {
 /// to the client.
 impl IntoResponse for Error {
     fn into_response(self) -> Response {
-        log::error!("error: {}", self);
+        log::error!("error: {}", self.message());
         match self {
             Self::UnprocessableEntity { errors } => {
                 #[derive(serde::Serialize)]
