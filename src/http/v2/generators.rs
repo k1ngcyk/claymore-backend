@@ -31,6 +31,7 @@ pub(crate) fn router() -> Router<ApiContext> {
         .route("/v2/generator/reset", post(handle_reset_generator))
         .route("/v2/generator/run", post(handle_run_generator))
         .route("/v2/generator/clearFiles", post(handle_clear_files))
+        .route("/v2/generator/evaluate", post(handle_evaluate_generator))
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -91,6 +92,12 @@ struct GeneratorRunRequest {
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct GeneratorClearFilesRequest {
+    generator_id: Uuid,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct GeneratorEvaluateRequest {
     generator_id: Uuid,
 }
 
@@ -169,6 +176,7 @@ async fn handle_new_generator(
         let template_data = template.template_data;
         let keys = template_data["keys"].as_array().unwrap();
         let prompt = template_data["prompt"].as_str().unwrap();
+        let separator = template_data["separator"].as_str().unwrap();
         let key_configs = &template_data["keyConfigs"];
         let mut map = serde_json::Map::new();
         for key in keys {
@@ -214,6 +222,7 @@ async fn handle_new_generator(
             "input": "",
             "keys": keys,
             "keyConfigs": serde_json::Value::Object(map),
+            "separator": separator,
         });
     } else {
         generator_config = json!({
@@ -221,6 +230,7 @@ async fn handle_new_generator(
             "input": "",
             "keys": [],
             "keyConfigs": {},
+            "separator": "",
         });
         evaluator_config = json!({
             "prompt": "",
@@ -875,6 +885,7 @@ async fn handle_reset_generator(
         let template_data = template.template_data;
         let keys = template_data["keys"].as_array().unwrap();
         let prompt = template_data["prompt"].as_str().unwrap();
+        let separator = template_data["separator"].as_str().unwrap();
         let key_configs = &template_data["keyConfigs"];
         let mut map = serde_json::Map::new();
         for key in keys {
@@ -896,6 +907,7 @@ async fn handle_reset_generator(
             "input": "",
             "keys": keys,
             "keyConfigs": serde_json::Value::Object(map),
+            "separator": separator,
         });
     } else {
         generator_config = json!({
@@ -903,6 +915,7 @@ async fn handle_reset_generator(
             "input": "",
             "keys": [],
             "keyConfigs": {},
+            "separator": "",
         });
     }
 
@@ -992,6 +1005,7 @@ async fn handle_run_generator(
             key_config["value"].as_str().unwrap(),
         );
     }
+    let separtor = generator_config["separator"].as_str().unwrap_or("\n\n");
 
     let files = sqlx::query!(
         r#"select
@@ -1051,6 +1065,7 @@ async fn handle_run_generator(
                     "prompt": prompt,
                     "team_id": team_id,
                     "user_id": auth_user.user_id,
+                    "separator": separtor,
                 }),
             )
             .await;
@@ -1107,6 +1122,107 @@ async fn handle_clear_files(
     )
     .execute(&ctx.db)
     .await?;
+
+    Ok(Json(CommonResponse {
+        code: 200,
+        message: "success".to_string(),
+        data: json!({}),
+    }))
+}
+
+async fn handle_evaluate_generator(
+    auth_user: AuthUser,
+    ctx: State<ApiContext>,
+    Json(req): Json<GeneratorBody<GeneratorEvaluateRequest>>,
+) -> Result<Json<CommonResponse>> {
+    let generator_id = req.generator.generator_id;
+    let generator = sqlx::query!(
+        r#"select
+            project_id,
+            template_id
+        from generator_v2 where generator_id = $1"#,
+        generator_id
+    )
+    .fetch_one(&ctx.db)
+    .await?;
+    let team_id = sqlx::query!(
+        // language=PostgreSQL
+        r#"select team_id from project where project_id = $1"#,
+        generator.project_id
+    )
+    .fetch_one(&ctx.db)
+    .await?
+    .team_id;
+    let _member_record = sqlx::query!(
+        // language=PostgreSQL
+        r#"select user_level from team_member where team_id = $1 and user_id = $2"#,
+        team_id,
+        auth_user.user_id
+    )
+    .fetch_optional(&ctx.db)
+    .await?
+    .ok_or_else(|| Error::Unauthorized)?;
+
+    if _member_record.user_level > 1 {
+        return Err(Error::Unauthorized);
+    }
+
+    let evaluator = sqlx::query!(
+        r#"select
+            evaluator_id,
+            config_data
+        from evaluator_v2 where generator_id = $1"#,
+        generator_id
+    )
+    .fetch_one(&ctx.db)
+    .await?;
+
+    let evaluator_config = evaluator.config_data;
+    let evaluator_config = evaluator_config.as_object().unwrap();
+    let mut prompt = evaluator_config["prompt"].as_str().unwrap().to_string();
+    let keys = evaluator_config["keys"].as_array().unwrap();
+    let key_configs = &evaluator_config["keyConfigs"];
+    for key in keys {
+        let key = key.as_str().unwrap();
+        let key_config = key_configs[key].as_object().unwrap();
+        prompt = prompt.replace(
+            &format!("@key/{}", key),
+            key_config["value"].as_str().unwrap(),
+        );
+    }
+    let datadrops = sqlx::query!(
+        r#"select
+            datadrop_id,
+            datadrop_name,
+            datadrop_content,
+            generator_id,
+            project_id,
+            extra_data
+        from datadrop_v2 where generator_id = $1"#,
+        generator_id
+    )
+    .fetch_all(&ctx.db)
+    .await?;
+
+    for datadrop in datadrops {
+        let input = datadrop.datadrop_content;
+        let extra_data = datadrop.extra_data.unwrap_or(json!({"text": ""}));
+        let reference = extra_data.as_str().unwrap();
+        queue::publish_message_v2_evaluate(
+            &queue::make_channel(&ctx.config.rabbitmq_url).await,
+            json!({
+                "generator_id": generator_id,
+                "datadrop_id": datadrop.datadrop_id,
+                "project_id": generator.project_id,
+                "input": input,
+                "prompt": prompt,
+                "team_id": team_id,
+                "user_id": auth_user.user_id,
+                "reference": reference,
+            }),
+        )
+        .await;
+    }
 
     Ok(Json(CommonResponse {
         code: 200,
