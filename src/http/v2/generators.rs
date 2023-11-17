@@ -992,6 +992,7 @@ async fn handle_run_generator(
             key_config["value"].as_str().unwrap(),
         );
     }
+    let separtor = generator_config["separator"].as_str().unwrap_or("\n\n");
 
     let files = sqlx::query!(
         r#"select
@@ -1051,6 +1052,7 @@ async fn handle_run_generator(
                     "prompt": prompt,
                     "team_id": team_id,
                     "user_id": auth_user.user_id,
+                    "separator": separtor,
                 }),
             )
             .await;

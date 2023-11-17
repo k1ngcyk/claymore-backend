@@ -97,8 +97,7 @@ async fn handle_chat(
 
     let datadrops = datadrops
         .iter()
-        .map(|d| d.datadrop_content.split("\n\n").collect::<Vec<&str>>())
-        .flatten()
+        .map(|d| d.datadrop_content.as_str())
         .collect::<Vec<&str>>();
 
     let transport = Transport::single_node(&ctx.config.es_url).unwrap();

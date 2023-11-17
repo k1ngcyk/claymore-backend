@@ -326,6 +326,8 @@ pub async fn execute_job_v2(
     let team_id = Uuid::parse_str(team_id).unwrap();
     let user_id = message["user_id"].as_str().unwrap();
     let user_id = Uuid::parse_str(user_id).unwrap();
+    let separator = message["separator"].as_str().unwrap_or("\n\n");
+    let separator = separator.to_string();
     let bpe = cl100k_base().unwrap();
     let client = Client::new();
     let chat_request = CreateChatCompletionRequestArgs::default()
@@ -378,19 +380,22 @@ pub async fn execute_job_v2(
     .await
     .unwrap();
 
-    let _result = sqlx::query!(
-        r#"insert into datadrop_v2 (datadrop_name, datadrop_content, generator_id, project_id, extra_data) values ($1, $2, $3, $4, $5)"#,
-        format!("Data {}", generator_id),
-        output,
-        generator_id,
-        project_id,
-        serde_json::json!({
-            "text": input,
-        })
-    )
-    .execute(&db)
-    .await
-    .unwrap();
+    let results = output.split(&separator).collect::<Vec<&str>>();
+    for result in results {
+        let _result = sqlx::query!(
+            r#"insert into datadrop_v2 (datadrop_name, datadrop_content, generator_id, project_id, extra_data) values ($1, $2, $3, $4, $5)"#,
+            format!("Data {}", generator_id),
+            result,
+            generator_id,
+            project_id,
+            serde_json::json!({
+                "text": input,
+            })
+        )
+        .execute(&db)
+        .await
+        .unwrap();
+    }
 
     sqlx::query!(
         r#"update file_generator_v2 set finish_process = $1 where file_id = $2 and generator_id = $3"#,
