@@ -30,6 +30,7 @@ pub async fn start_consumer(db: PgPool, mq: Channel) {
     let db2 = db.clone();
     let db_eval = db.clone();
     let channel = mq;
+    let channel2 = channel.clone();
     channel
         .basic_qos(1, BasicQosOptions::default())
         .await
@@ -134,6 +135,7 @@ pub async fn start_consumer(db: PgPool, mq: Channel) {
     });
 
     consumer_v2.set_delegate(move |delivery: DeliveryResult| {
+        let channel = channel.clone();
         let db = db2.clone();
         async move {
             let delivery = match delivery {
@@ -167,20 +169,43 @@ pub async fn start_consumer(db: PgPool, mq: Channel) {
                         .await
                         .expect("Failed to ack message");
                 }
-                executor::ExecuteResultV2::Failed => {
-                    delivery
-                        .nack(BasicNackOptions {
-                            multiple: false,
-                            requeue: true,
-                        })
-                        .await
-                        .expect("Failed to requeue message");
+                executor::ExecuteResultV2::Failed(attempts) => {
+                    if attempts > 3 {
+                        delivery
+                            .ack(BasicAckOptions::default())
+                            .await
+                            .expect("Failed to ack message");
+                    } else {
+                        let mut headers = FieldTable::default();
+                        headers.insert(
+                            "x-attempts".into(),
+                            lapin::types::AMQPValue::LongLongInt(attempts as i64),
+                        );
+                        let props = BasicProperties::default().with_headers(headers);
+                        let result = channel
+                            .basic_publish(
+                                "",
+                                &delivery.routing_key.as_str(),
+                                BasicPublishOptions::default(),
+                                delivery.data.as_slice(),
+                                props,
+                            )
+                            .await
+                            .unwrap()
+                            .await
+                            .unwrap();
+                        delivery
+                            .ack(BasicAckOptions::default())
+                            .await
+                            .expect("Failed to ack message");
+                    }
                 }
             }
         }
     });
 
     consumer_v2_evaluate.set_delegate(move |delivery: DeliveryResult| {
+        let channel = channel2.clone();
         let db = db_eval.clone();
         async move {
             let delivery = match delivery {
@@ -214,14 +239,36 @@ pub async fn start_consumer(db: PgPool, mq: Channel) {
                         .await
                         .expect("Failed to ack message");
                 }
-                executor::ExecuteResultV2::Failed => {
-                    delivery
-                        .nack(BasicNackOptions {
-                            multiple: false,
-                            requeue: true,
-                        })
-                        .await
-                        .expect("Failed to requeue message");
+                executor::ExecuteResultV2::Failed(attempts) => {
+                    if attempts > 3 {
+                        delivery
+                            .ack(BasicAckOptions::default())
+                            .await
+                            .expect("Failed to ack message");
+                    } else {
+                        let mut headers = FieldTable::default();
+                        headers.insert(
+                            "x-attempts".into(),
+                            lapin::types::AMQPValue::LongLongInt(attempts as i64),
+                        );
+                        let props = BasicProperties::default().with_headers(headers);
+                        let result = channel
+                            .basic_publish(
+                                "",
+                                &delivery.routing_key.as_str(),
+                                BasicPublishOptions::default(),
+                                delivery.data.as_slice(),
+                                props,
+                            )
+                            .await
+                            .unwrap()
+                            .await
+                            .unwrap();
+                        delivery
+                            .ack(BasicAckOptions::default())
+                            .await
+                            .expect("Failed to ack message");
+                    }
                 }
             }
         }

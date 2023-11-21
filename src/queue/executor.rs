@@ -27,7 +27,7 @@ pub enum ExecuteResult {
 
 pub enum ExecuteResultV2 {
     Success,
-    Failed,
+    Failed(i32),
 }
 
 pub async fn execute_job(db: PgPool, delivery: &Delivery) -> Result<ExecuteResult, anyhow::Error> {
@@ -311,6 +311,17 @@ pub async fn execute_job_v2(
 ) -> Result<ExecuteResultV2, anyhow::Error> {
     let message = str::from_utf8(&delivery.data).unwrap();
     let message: Value = serde_json::from_str(message).unwrap();
+    let mut attempts = 0;
+    if let Some(headers) = delivery.properties.headers() {
+        for (key, value) in headers.into_iter() {
+            if key.as_str() == "x-attempts" {
+                if let lapin::types::AMQPValue::LongLongInt(val) = value {
+                    attempts = *val as i32;
+                    break;
+                }
+            }
+        }
+    }
     let generator_id = message["generator_id"].as_str().unwrap();
     let generator_id = Uuid::parse_str(generator_id).unwrap();
     let project_id = message["project_id"].as_str().unwrap();
@@ -356,7 +367,9 @@ pub async fn execute_job_v2(
 
     let gpt_response = client.chat().create(chat_request).await;
     if gpt_response.is_err() {
-        return Ok(ExecuteResultV2::Failed);
+        let error = gpt_response.unwrap_err();
+        log::error!("error: {}", error);
+        return Ok(ExecuteResultV2::Failed(attempts + 1));
     }
     let gpt_response = gpt_response.unwrap();
     let output = &gpt_response
@@ -416,6 +429,17 @@ pub async fn execute_job_v2_evaluate(
 ) -> Result<ExecuteResultV2, anyhow::Error> {
     let message = str::from_utf8(&delivery.data).unwrap();
     let message: Value = serde_json::from_str(message).unwrap();
+    let mut attempts = 0;
+    if let Some(headers) = delivery.properties.headers() {
+        for (key, value) in headers.into_iter() {
+            if key.as_str() == "x-attempts" {
+                if let lapin::types::AMQPValue::LongLongInt(val) = value {
+                    attempts = *val as i32;
+                    break;
+                }
+            }
+        }
+    }
     let generator_id = message["generator_id"].as_str().unwrap();
     let generator_id = Uuid::parse_str(generator_id).unwrap();
     let datadrop_id = message["datadrop_id"].as_str().unwrap();
@@ -462,7 +486,7 @@ pub async fn execute_job_v2_evaluate(
 
     let gpt_response = client.chat().create(chat_request).await;
     if gpt_response.is_err() {
-        return Ok(ExecuteResultV2::Failed);
+        return Ok(ExecuteResultV2::Failed(attempts + 1));
     }
     let gpt_response = gpt_response.unwrap();
     let output = &gpt_response
