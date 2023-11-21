@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select sum(token_count) from usage_v2 where user_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "sum",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "cbb13bf722df5e1b6d53c1554b304d491cadc6a00888184d57a41539405b8218"
+}
