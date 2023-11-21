@@ -1025,6 +1025,7 @@ async fn handle_run_generator(
         if file.finish_process {
             continue;
         }
+        log::info!("extracting: file_name: {}", &file.file_name);
         let file_path = Path::new(&ctx.config.upload_dir).join(&file.file_path);
         let client = reqwest::Client::builder().build().unwrap();
 
@@ -1051,8 +1052,8 @@ async fn handle_run_generator(
 
         let response = request.send().await.unwrap();
         let body = response.json::<serde_json::Value>().await.unwrap();
-        // log::info!("{:?}", body);
         let body = body.as_array().unwrap();
+        log::info!("extracted: count: {}", body.len());
         for item in body {
             let input = item["text"].as_str().unwrap().to_string();
             queue::publish_message_v2(

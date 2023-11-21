@@ -36,7 +36,8 @@ deploy:
     - cp $PRODUCTION_ENV claymore.env
     - docker compose up -d
   tags:
-    - fluxus-sg-shell
+    - fluxus-sjc-shell
+    - epyc
   only:
     - main
 

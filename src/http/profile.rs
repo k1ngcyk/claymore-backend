@@ -78,9 +78,19 @@ async fn handle_get_profile(
             projects,
         });
     }
+
+    let tokens = sqlx::query!(
+        r#"select sum(token_count) from usage_v2 where user_id = $1"#,
+        user_id
+    )
+    .fetch_one(&ctx.db)
+    .await?
+    .sum
+    .unwrap_or(0);
+
     Ok(Json(CommonResponse {
         code: 200,
         message: "success".to_string(),
-        data: json!({ "teams": result }),
+        data: json!({ "teams": result, "tokenUsage": tokens }),
     }))
 }
