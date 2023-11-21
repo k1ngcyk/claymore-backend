@@ -65,6 +65,4 @@ networks:
 
 volumes:
   claymore_backend_data:
-    external: true
   claymore_es_data:
-    external: true
