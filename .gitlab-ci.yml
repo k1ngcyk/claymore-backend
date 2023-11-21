@@ -25,7 +25,6 @@ build:
     - 'if [ -z "$CI_COMMIT_TAG" ]; then docker tag $IMAGE_NAME $LATEST_IMAGE; docker push $LATEST_IMAGE; fi'
   tags:
     - fluxus-docker-builder
-    - dedi
 
 deploy:
   stage: deploy
