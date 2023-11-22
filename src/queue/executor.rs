@@ -402,7 +402,7 @@ pub async fn execute_job_v2(
             generator_id,
             project_id,
             serde_json::json!({
-                "text": input,
+                "text": input.replace("\u{0000}", ""),
             })
         )
         .execute(&db)
