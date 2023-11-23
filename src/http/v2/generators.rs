@@ -1040,6 +1040,8 @@ async fn handle_run_generator(
             )
             .text("strategy", "auto")
             .text("chunking_strategy", "by_title")
+            .text("new_after_n_chars", "500")
+            .text("max_characters", "1000")
             .text("combine_under_n_chars", "500");
 
         let request = client
