@@ -368,7 +368,7 @@ pub async fn execute_job_v2(
     let gpt_response = client.chat().create(chat_request).await;
     if gpt_response.is_err() {
         let error = gpt_response.unwrap_err();
-        log::error!("error: {}", error);
+        log::error!("attempt: {}, error: {}", attempts, error);
         return Ok(ExecuteResultV2::Failed(attempts + 1));
     }
     let gpt_response = gpt_response.unwrap();
