@@ -141,7 +141,7 @@ async fn handle_get_datadrop_info(
     )
     .fetch_optional(&ctx.db)
     .await?
-    .ok_or_else(|| Error::Unauthorized)?;
+    .ok_or_else(|| Error::Forbidden)?;
 
     let datadrop = sqlx::query_as!(
         DatadropFromSql,
@@ -224,7 +224,7 @@ async fn handle_get_datadrop_list(
     )
     .fetch_optional(&ctx.db)
     .await?
-    .ok_or_else(|| Error::Unauthorized)?;
+    .ok_or_else(|| Error::Forbidden)?;
 
     let page_size = req.page_size.unwrap_or(10);
     let page = req.page.unwrap_or(1);
@@ -306,7 +306,7 @@ async fn handle_modify_datadrop(
     )
     .fetch_optional(&ctx.db)
     .await?
-    .ok_or_else(|| Error::Unauthorized)?;
+    .ok_or_else(|| Error::Forbidden)?;
 
     let datadrop = sqlx::query_as!(
         DatadropFromSql,

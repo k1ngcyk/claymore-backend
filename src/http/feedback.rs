@@ -80,7 +80,7 @@ async fn handle_new_feedback(
     )
     .fetch_optional(&ctx.db)
     .await?
-    .ok_or_else(|| Error::Unauthorized)?;
+    .ok_or_else(|| Error::Forbidden)?;
 
     if req.feedback.feedback_content.is_none() {
         sqlx::query!(

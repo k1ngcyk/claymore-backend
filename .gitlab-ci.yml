@@ -49,6 +49,7 @@ deploy-dev:
     - cp $PRODUCTION_ENV claymore.env
     - docker compose up -d
   tags:
-    - fluxus-hz-dev-shell
+    - fluxus-sg-shell
+    - epyc
   only:
     - dev

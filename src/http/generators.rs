@@ -115,10 +115,10 @@ async fn handle_new_generator(
     )
     .fetch_optional(&ctx.db)
     .await?
-    .ok_or_else(|| Error::Unauthorized)?;
+    .ok_or_else(|| Error::Forbidden)?;
 
     if member_record.user_level > 1 {
-        return Err(Error::Unauthorized);
+        return Err(Error::Forbidden);
     }
 
     let available_models = vec!["gpt-4", "gpt-3.5-turbo-16k", "gpt-3.5-turbo"];
@@ -181,7 +181,7 @@ async fn handle_get_generator_info(
     )
     .fetch_optional(&ctx.db)
     .await?
-    .ok_or_else(|| Error::Unauthorized)?;
+    .ok_or_else(|| Error::Forbidden)?;
 
     let generator = sqlx::query!(
         r#"select
@@ -237,7 +237,7 @@ async fn handle_get_generator_list(
     )
     .fetch_optional(&ctx.db)
     .await?
-    .ok_or_else(|| Error::Unauthorized)?;
+    .ok_or_else(|| Error::Forbidden)?;
 
     let generators = sqlx::query_as!(
         GeneratorFromSql,
@@ -307,7 +307,7 @@ async fn handle_try_generator(
         )
         .fetch_optional(&ctx.db)
         .await?
-        .ok_or_else(|| Error::Unauthorized)?;
+        .ok_or_else(|| Error::Forbidden)?;
         model_name = generator.model_name;
         prompt_chain = generator.prompt_chain;
         temperature = generator.temperature;
@@ -534,10 +534,10 @@ async fn handle_delete_generator(
     )
     .fetch_optional(&ctx.db)
     .await?
-    .ok_or_else(|| Error::Unauthorized)?;
+    .ok_or_else(|| Error::Forbidden)?;
 
     if _member_record.user_level > 1 {
-        return Err(Error::Unauthorized);
+        return Err(Error::Forbidden);
     }
 
     sqlx::query!(

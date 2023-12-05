@@ -78,7 +78,7 @@ async fn handle_chat(
     )
     .fetch_optional(&ctx.db)
     .await?
-    .ok_or_else(|| Error::Unauthorized)?;
+    .ok_or_else(|| Error::Forbidden)?;
 
     let user_input = req.chat.user_input;
     let chat_history = req.chat.chat_history;

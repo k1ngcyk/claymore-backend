@@ -115,7 +115,7 @@ async fn handle_get_team_info(
     .await?;
 
     if team.owner_id != auth_user.user_id {
-        return Err(Error::Unauthorized);
+        return Err(Error::Forbidden);
     }
 
     let member_record = sqlx::query!(
@@ -156,7 +156,7 @@ async fn handle_team_invite(
     .await?;
 
     if team.owner_id != auth_user.user_id {
-        return Err(Error::Unauthorized);
+        return Err(Error::Forbidden);
     }
 
     sqlx::query!(

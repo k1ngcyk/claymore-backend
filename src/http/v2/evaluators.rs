@@ -67,7 +67,7 @@ async fn handle_save_evaluator(
     )
     .fetch_optional(&ctx.db)
     .await?
-    .ok_or_else(|| Error::Unauthorized)?;
+    .ok_or_else(|| Error::Forbidden)?;
 
     let evaluator_config = req.evaluator.data;
 

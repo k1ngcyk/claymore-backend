@@ -163,10 +163,10 @@ async fn handle_new_job(
     )
     .fetch_optional(&ctx.db)
     .await?
-    .ok_or_else(|| Error::Unauthorized)?;
+    .ok_or_else(|| Error::Forbidden)?;
 
     if member_record.user_level > 1 {
-        return Err(Error::Unauthorized);
+        return Err(Error::Forbidden);
     }
 
     if req.job.generator_id.is_none()
@@ -295,7 +295,7 @@ async fn handle_get_job_list(
     )
     .fetch_optional(&ctx.db)
     .await?
-    .ok_or_else(|| Error::Unauthorized)?;
+    .ok_or_else(|| Error::Forbidden)?;
 
     let jobs = sqlx::query_as!(
         JobFromSql,
@@ -351,10 +351,10 @@ async fn handle_operate_job(
     )
     .fetch_optional(&ctx.db)
     .await?
-    .ok_or_else(|| Error::Unauthorized)?;
+    .ok_or_else(|| Error::Forbidden)?;
 
     if member_record.user_level > 1 {
-        return Err(Error::Unauthorized);
+        return Err(Error::Forbidden);
     }
 
     let current_status = sqlx::query!(
@@ -486,7 +486,7 @@ async fn handle_get_job_candidate(
     )
     .fetch_optional(&ctx.db)
     .await?
-    .ok_or_else(|| Error::Unauthorized)?;
+    .ok_or_else(|| Error::Forbidden)?;
 
     let candidates = sqlx::query_as!(
         DatadropFromSql,
@@ -536,7 +536,7 @@ async fn handle_get_job_info(
     )
     .fetch_optional(&ctx.db)
     .await?
-    .ok_or_else(|| Error::Unauthorized)?;
+    .ok_or_else(|| Error::Forbidden)?;
 
     let generator_id = sqlx::query!(
         // language=PostgreSQL

@@ -64,10 +64,10 @@ async fn handle_new_project(
     )
     .fetch_optional(&ctx.db)
     .await?
-    .ok_or_else(|| Error::Unauthorized)?;
+    .ok_or_else(|| Error::Forbidden)?;
 
     if member_record.user_level > 1 {
-        return Err(Error::Unauthorized);
+        return Err(Error::Forbidden);
     }
 
     if req.project.project_name == "" {
@@ -117,10 +117,10 @@ async fn handle_get_project_list(
     )
     .fetch_optional(&ctx.db)
     .await?
-    .ok_or_else(|| Error::Unauthorized)?;
+    .ok_or_else(|| Error::Forbidden)?;
 
     if member_record.user_level > 1 {
-        return Err(Error::Unauthorized);
+        return Err(Error::Forbidden);
     }
 
     let projects = sqlx::query_as!(
