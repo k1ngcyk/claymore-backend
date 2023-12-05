@@ -1,22 +1,10 @@
 use crate::http::extractor::AuthUser;
-use crate::http::types::Timestamptz;
-use crate::http::{datadrops, ApiContext};
-use crate::http::{Error, Result, ResultExt};
-use crate::queue;
-use async_openai::types::ChatCompletionRequestMessage;
-use async_openai::{
-    types::{ChatCompletionRequestMessageArgs, CreateChatCompletionRequestArgs, Role},
-    Client,
-};
-use axum::extract::{Query, State};
-use axum::routing::{get, post};
+use crate::http::ApiContext;
+use crate::http::{Error, Result};
+use axum::extract::State;
+use axum::routing::post;
 use axum::{Json, Router};
-use elasticsearch::http::transport::Transport;
-use elasticsearch::ExistsParts;
-use log::info;
-use regex::Regex;
 use serde_json::json;
-use std::path::Path;
 use uuid::Uuid;
 
 use crate::http::CommonResponse;

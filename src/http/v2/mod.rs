@@ -1,20 +1,10 @@
-use axum::extract::{Extension, Path};
 use axum::routing::get;
 use axum::{Json, Router};
 
-use crate::http::extractor::AuthUser;
-use crate::http::types::Timestamptz;
 use crate::http::ApiContext;
-use crate::http::{Error, Result, ResultExt};
-use async_openai::{
-    types::{ChatCompletionRequestMessageArgs, CreateChatCompletionRequestArgs, Role},
-    Client,
-};
-use axum::extract::{Query, State};
-use log::info;
-use regex::Regex;
+use crate::http::Result;
+use axum::extract::State;
 use serde_json::json;
-use uuid::Uuid;
 
 use crate::http::CommonResponse;
 

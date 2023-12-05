@@ -1,5 +1,5 @@
 use async_openai::{
-    types::{ChatCompletionRequestMessageArgs, CreateChatCompletionRequestArgs, Role},
+    types::{ChatCompletionRequestUserMessageArgs, CreateChatCompletionRequestArgs, Role},
     Client,
 };
 use lapin::message::Delivery;
@@ -272,11 +272,11 @@ pub async fn execute_job(db: PgPool, delivery: &Delivery) -> Result<ExecuteResul
             .max_tokens(word_count)
             .model(&model_name)
             .temperature(temperature)
-            .messages([ChatCompletionRequestMessageArgs::default()
-                .role(Role::User)
+            .messages([ChatCompletionRequestUserMessageArgs::default()
                 .content(format!(r#"{}"#, prompt))
                 .build()
-                .unwrap()])
+                .unwrap()
+                .into()])
             .build()
             .unwrap();
         let gpt_response = client.chat().create(chat_request).await.unwrap();
@@ -287,7 +287,9 @@ pub async fn execute_job(db: PgPool, delivery: &Delivery) -> Result<ExecuteResul
             .next()
             .unwrap()
             .message
-            .content;
+            .content
+            .clone()
+            .unwrap_or_default();
         prompt_responses.push(output.to_string());
         response = output.to_string();
     }
@@ -345,11 +347,11 @@ pub async fn execute_job_v2(
         .max_tokens(2048u16)
         .model("gpt-3.5-turbo")
         .temperature(0.1)
-        .messages([ChatCompletionRequestMessageArgs::default()
-            .role(Role::User)
+        .messages([ChatCompletionRequestUserMessageArgs::default()
             .content(format!(r#"{}"#, prompt))
             .build()
-            .unwrap()])
+            .unwrap()
+            .into()])
         .build()
         .unwrap();
     let tokens = bpe.encode_with_special_tokens(&prompt);
@@ -379,7 +381,9 @@ pub async fn execute_job_v2(
         .next()
         .unwrap()
         .message
-        .content;
+        .content
+        .clone()
+        .unwrap_or_default();
     let tokens = bpe.encode_with_special_tokens(&output);
     sqlx::query!(
         r#"insert into usage_v2 (team_id, project_id, generator_id, user_id, token_count) values ($1, $2, $3, $4, $5)"#,
@@ -464,11 +468,11 @@ pub async fn execute_job_v2_evaluate(
         .max_tokens(2048u16)
         .model("gpt-4")
         .temperature(0.1)
-        .messages([ChatCompletionRequestMessageArgs::default()
-            .role(Role::User)
+        .messages([ChatCompletionRequestUserMessageArgs::default()
             .content(format!(r#"{}"#, prompt))
             .build()
-            .unwrap()])
+            .unwrap()
+            .into()])
         .build()
         .unwrap();
     let tokens = bpe.encode_with_special_tokens(&prompt);
@@ -496,7 +500,9 @@ pub async fn execute_job_v2_evaluate(
         .next()
         .unwrap()
         .message
-        .content;
+        .content
+        .clone()
+        .unwrap_or_default();
     let tokens = bpe.encode_with_special_tokens(&output);
     sqlx::query!(
         r#"insert into usage_v2 (team_id, project_id, generator_id, user_id, token_count) values ($1, $2, $3, $4, $5)"#,

@@ -1,22 +1,19 @@
 use crate::http::extractor::AuthUser;
-use crate::http::types::Timestamptz;
-use crate::http::{datadrops, ApiContext};
-use crate::http::{Error, Result, ResultExt};
-use crate::queue;
+use crate::http::ApiContext;
+use crate::http::{Error, Result};
 use async_openai::types::ChatCompletionRequestMessage;
 use async_openai::{
-    types::{ChatCompletionRequestMessageArgs, CreateChatCompletionRequestArgs, Role},
+    types::{
+        ChatCompletionRequestAssistantMessageArgs, ChatCompletionRequestUserMessageArgs,
+        CreateChatCompletionRequestArgs, Role,
+    },
     Client,
 };
-use axum::extract::{Query, State};
-use axum::routing::{get, post};
+use axum::extract::State;
+use axum::routing::post;
 use axum::{Json, Router};
 use elasticsearch::http::transport::Transport;
-use elasticsearch::ExistsParts;
-use log::info;
-use regex::Regex;
 use serde_json::json;
-use std::path::Path;
 use uuid::Uuid;
 
 use crate::http::CommonResponse;
@@ -156,16 +153,16 @@ async fn handle_chat(
             .iter()
             .map(|h| {
                 vec![
-                    ChatCompletionRequestMessageArgs::default()
-                        .role(Role::User)
+                    ChatCompletionRequestUserMessageArgs::default()
                         .content(h.user_input.clone())
                         .build()
-                        .unwrap(),
-                    ChatCompletionRequestMessageArgs::default()
-                        .role(Role::Assistant)
+                        .unwrap()
+                        .into(),
+                    ChatCompletionRequestAssistantMessageArgs::default()
                         .content(h.ai_output.clone())
                         .build()
-                        .unwrap(),
+                        .unwrap()
+                        .into(),
                 ]
             })
             .flatten()
@@ -174,11 +171,11 @@ async fn handle_chat(
         messages = Vec::<ChatCompletionRequestMessage>::new()
     };
     messages.push(
-        ChatCompletionRequestMessageArgs::default()
-            .role(Role::User)
+        ChatCompletionRequestUserMessageArgs::default()
             .content(format!("你是一个 AI 聊天助手，你的目标是根据我提供的知识库 {} 回答我的问题。我会检验你对知识库中内容的掌握程度，是否正确地回答了我的问题。在回答时，你需要遵循以下规则：\n1. 你必须使用知识库中相关的文本，来回答我的问题，你的回答必须是完整，专业，严谨的。\n2. 如果在知识库中没有找到符合我提问的答案，请直接说不知道，不要编造虚假的内容，或者使用其他不相关的内容来回答。\n{}", &refs, &user_input))
             .build()
-            .unwrap(),
+            .unwrap()
+            .into(),
     );
 
     log::info!("messages: {:?}", messages);
@@ -197,7 +194,9 @@ async fn handle_chat(
         .next()
         .unwrap()
         .message
-        .content;
+        .content
+        .clone()
+        .unwrap_or_default();
 
     let mut history = new_history.unwrap_or_default();
     history.push(ChatHistory {
