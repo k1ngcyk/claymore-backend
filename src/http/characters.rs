@@ -86,10 +86,10 @@ async fn handle_new_character(
     )
     .fetch_optional(&ctx.db)
     .await?
-    .ok_or_else(|| Error::Unauthorized)?;
+    .ok_or_else(|| Error::Forbidden)?;
 
     if member_record.user_level > 1 {
-        return Err(Error::Unauthorized);
+        return Err(Error::Forbidden);
     }
 
     let character = sqlx::query!(
@@ -132,7 +132,7 @@ async fn handle_get_character_info(
     )
     .fetch_optional(&ctx.db)
     .await?
-    .ok_or_else(|| Error::Unauthorized)?;
+    .ok_or_else(|| Error::Forbidden)?;
 
     let character = sqlx::query_as!(
         CharacterFromSql,
@@ -181,7 +181,7 @@ async fn handle_get_character_list(
     )
     .fetch_optional(&ctx.db)
     .await?
-    .ok_or_else(|| Error::Unauthorized)?;
+    .ok_or_else(|| Error::Forbidden)?;
 
     let characters = sqlx::query_as!(
         CharacterFromSql,
@@ -227,7 +227,7 @@ async fn handle_modify_character_settings(
     )
     .fetch_optional(&ctx.db)
     .await?
-    .ok_or_else(|| Error::Unauthorized)?;
+    .ok_or_else(|| Error::Forbidden)?;
 
     if req.character.character_name.is_none() && req.character.settings.is_none() {
         return Err(Error::unprocessable_entity([(

@@ -80,7 +80,7 @@ async fn handle_new_comment(
     )
     .fetch_optional(&ctx.db)
     .await?
-    .ok_or_else(|| Error::Unauthorized)?;
+    .ok_or_else(|| Error::Forbidden)?;
 
     if req.comment.comment_content == "" || req.comment.comment_content.len() > 500 {
         return Err(Error::unprocessable_entity([(
