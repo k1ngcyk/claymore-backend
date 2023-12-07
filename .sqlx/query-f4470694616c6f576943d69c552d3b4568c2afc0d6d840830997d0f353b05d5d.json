@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select\n            module_id,\n            module_name,\n            template_id,\n            workspace_id,\n            module_category,\n            config_data,\n            created_at \"created_at: Timestamptz\",\n            updated_at \"updated_at: Timestamptz\"\n        from module_v2\n        where workspace_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "module_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "module_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "template_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "workspace_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "module_category",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "config_data",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at: Timestamptz",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "updated_at: Timestamptz",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "f4470694616c6f576943d69c552d3b4568c2afc0d6d840830997d0f353b05d5d"
+}

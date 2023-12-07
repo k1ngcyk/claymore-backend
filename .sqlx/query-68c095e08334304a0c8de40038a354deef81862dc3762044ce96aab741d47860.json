@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update file_module set finish_process = $1 where file_id = $2 and module_id = $3",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Bool",
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "68c095e08334304a0c8de40038a354deef81862dc3762044ce96aab741d47860"
+}

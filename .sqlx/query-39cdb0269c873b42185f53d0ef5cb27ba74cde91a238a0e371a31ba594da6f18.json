@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "insert into candidate_v2 (content, module_id, job_id, job_status_group_id, extra_data) values ($1, $2, $3, $4, $5)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "39cdb0269c873b42185f53d0ef5cb27ba74cde91a238a0e371a31ba594da6f18"
+}

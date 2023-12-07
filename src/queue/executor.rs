@@ -1,3 +1,5 @@
+use crate::openai;
+use crate::openai::ChatRequest;
 use async_openai::{
     types::{ChatCompletionRequestUserMessageArgs, CreateChatCompletionRequestArgs, Role},
     Client,
@@ -8,7 +10,7 @@ use regex::Regex;
 use serde_json::Value;
 use sqlx::PgPool;
 use std::str;
-use tiktoken_rs::cl100k_base;
+use tiktoken_rs::{cl100k_base, model};
 use uuid::Uuid;
 
 #[derive(sqlx::Type, PartialEq, Debug)]
@@ -520,6 +522,129 @@ pub async fn execute_job_v2_evaluate(
         r#"update datadrop_v2 set extra_data['evaluate'] = to_jsonb($1::text) where datadrop_id = $2"#,
         output,
         datadrop_id
+    )
+    .execute(&db)
+    .await
+    .unwrap();
+
+    Ok(ExecuteResultV2::Success)
+}
+
+pub async fn execute_job_evo(
+    db: PgPool,
+    delivery: &Delivery,
+) -> Result<ExecuteResultV2, anyhow::Error> {
+    let message = str::from_utf8(&delivery.data).unwrap();
+    let message: Value = serde_json::from_str(message).unwrap();
+    let mut attempts = 0;
+    if let Some(headers) = delivery.properties.headers() {
+        for (key, value) in headers.into_iter() {
+            if key.as_str() == "x-attempts" {
+                if let lapin::types::AMQPValue::LongLongInt(val) = value {
+                    attempts = *val as i32;
+                    break;
+                }
+            }
+        }
+    }
+    let module_id = message["module_id"].as_str().unwrap();
+    let module_id = Uuid::parse_str(module_id).unwrap();
+    let job_id = message["job_id"].as_str().unwrap();
+    let job_id = Uuid::parse_str(job_id).unwrap();
+    let workspace_id = message["workspace_id"].as_str().unwrap();
+    let workspace_id = Uuid::parse_str(workspace_id).unwrap();
+    let file_id = message["file_id"].as_str().unwrap();
+    let file_id = Uuid::parse_str(file_id).unwrap();
+    let input = message["input"].as_str().unwrap();
+    let input = input.to_string();
+    let prompt = message["prompt"].as_str().unwrap();
+    let prompt = prompt.to_string();
+    let mut prompt = prompt.replace("@key/input", &input);
+    let user_id = message["user_id"].as_str().unwrap();
+    let user_id = Uuid::parse_str(user_id).unwrap();
+    let separator = message["separator"].as_str().unwrap_or_default();
+    let separator = separator.to_string();
+    let reference = message["reference"].as_str().unwrap_or_default();
+    let reference = reference.to_string();
+    let model_name = message["model_name"].as_str().unwrap_or("gpt-3.5-turbo");
+    if reference != "" {
+        prompt = prompt.replace("@key/reference", &reference);
+    }
+
+    let bpe = cl100k_base().unwrap();
+    let tokens = bpe.encode_with_special_tokens(&prompt);
+    sqlx::query!(
+        r#"insert into metric_v2 (workspace_id, user_id, module_id, token_count, word_count) values ($1, $2, $3, $4, $5)"#,
+        workspace_id,
+        user_id,
+        module_id,
+        tokens.len() as i32,
+        prompt.len() as i32
+    )
+    .execute(&db)
+    .await.unwrap();
+
+    let api_key = openai::get_available_key(&db).await.unwrap();
+    let output = openai::chat(
+        ChatRequest {
+            max_tokens: Some(2048),
+            input: prompt,
+            model: model_name.to_string(),
+            temperature: Some(0.1),
+            history: None,
+        },
+        &api_key.openai_key,
+    )
+    .await;
+    openai::release_key(&db, api_key).await.unwrap();
+
+    if output.is_err() {
+        let error = output.unwrap_err();
+        log::error!("attempt: {}, error: {}", attempts, error);
+        return Ok(ExecuteResultV2::Failed(attempts + 1));
+    }
+    let output = output.unwrap();
+
+    let tokens = bpe.encode_with_special_tokens(&output);
+    sqlx::query!(
+        r#"insert into metric_v2 (workspace_id, user_id, module_id, token_count, word_count) values ($1, $2, $3, $4, $5)"#,
+        workspace_id,
+        user_id,
+        module_id,
+        tokens.len() as i32,
+        output.len() as i32
+    )
+    .execute(&db)
+    .await.unwrap();
+
+    let results;
+    if separator != "" {
+        results = output.split(&separator).collect::<Vec<&str>>();
+    } else {
+        results = vec![output.as_str()];
+    }
+    let job_status_group_id = Uuid::new_v4();
+    for result in results {
+        let _result = sqlx::query!(
+            r#"insert into candidate_v2 (content, module_id, job_id, job_status_group_id, extra_data) values ($1, $2, $3, $4, $5)"#,
+            result,
+            module_id,
+            job_id,
+            job_status_group_id,
+            serde_json::json!({
+                "text": input.replace("\u{0000}", ""),
+            })
+        )
+        .execute(&db)
+        .await
+        .unwrap();
+    }
+
+    sqlx::query!(
+        r#"update file_module set finish_process = $1 where file_id = $2 and module_id = $3"#,
+        true,
+        file_id,
+        module_id
     )
     .execute(&db)
     .await

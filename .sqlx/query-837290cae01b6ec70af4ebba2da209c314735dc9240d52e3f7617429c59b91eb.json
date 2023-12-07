@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select\n            template_id,\n            template_name,\n            template_icon,\n            template_description,\n            template_data,\n            created_at \"created_at: Timestamptz\",\n            updated_at \"updated_at: Timestamptz\"\n        from template_v2\n        order by created_at desc",
+  "query": "select\n            template_id,\n            template_name,\n            template_icon,\n            template_description,\n            template_data,\n            template_category,\n            created_at \"created_at: Timestamptz\",\n            updated_at \"updated_at: Timestamptz\"\n        from template_v2\n        order by created_at desc",
   "describe": {
     "columns": [
       {
@@ -30,11 +30,16 @@
       },
       {
         "ordinal": 5,
+        "name": "template_category",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
         "name": "created_at: Timestamptz",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "updated_at: Timestamptz",
         "type_info": "Timestamptz"
       }
@@ -49,8 +54,9 @@
       false,
       false,
       false,
+      false,
       true
     ]
   },
-  "hash": "19a1bf9179a5f09fece1505191c15def57e949b26b348f56346af3684d01171f"
+  "hash": "837290cae01b6ec70af4ebba2da209c314735dc9240d52e3f7617429c59b91eb"
 }

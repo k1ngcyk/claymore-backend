@@ -27,6 +27,7 @@ struct TemplateFromSql {
     template_icon: String,
     template_description: String,
     template_data: serde_json::Value,
+    template_category: String,
     created_at: Timestamptz,
     #[serde(skip_serializing_if = "Option::is_none")]
     updated_at: Option<Timestamptz>,
@@ -45,6 +46,7 @@ async fn handle_get_template_list(
             template_icon,
             template_description,
             template_data,
+            template_category,
             created_at "created_at: Timestamptz",
             updated_at "updated_at: Timestamptz"
         from template_v2

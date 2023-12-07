@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select\n                template_data,\n                template_category\n            from template_v2 where template_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "template_data",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 1,
+        "name": "template_category",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "c89601033965db33cb91d723af44175ca8a240b6b82c365de6628b98116bc729"
+}

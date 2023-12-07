@@ -88,6 +88,23 @@ async fn create_user(
     .execute(&ctx.db)
     .await?;
 
+    let workspace = sqlx::query!(
+        r#"insert into workspace_v2 (workspace_name, owner_id, config_data) values ($1, $2, $3) returning workspace_id"#,
+        "Personal",
+        user_id,
+        json!({})
+    )
+    .fetch_one(&ctx.db)
+    .await?;
+
+    sqlx::query!(
+        r#"insert into workspace_member_v2 (workspace_id, user_id) values ($1, $2)"#,
+        workspace.workspace_id,
+        user_id
+    )
+    .execute(&ctx.db)
+    .await?;
+
     sqlx::query!(
         r#"insert into project (project_name, team_id) values ($1, $2)"#,
         format!(r#"{}'s Personal Project"#, &req.user.username),

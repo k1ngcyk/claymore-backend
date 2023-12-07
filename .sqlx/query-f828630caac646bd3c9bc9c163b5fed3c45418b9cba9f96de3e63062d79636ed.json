@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select\n            config_data\n        from module_v2 where module_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "config_data",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "f828630caac646bd3c9bc9c163b5fed3c45418b9cba9f96de3e63062d79636ed"
+}

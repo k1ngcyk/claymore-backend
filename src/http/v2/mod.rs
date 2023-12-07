@@ -12,6 +12,7 @@ mod chats;
 mod evaluators;
 mod files;
 mod generators;
+mod module;
 mod templates;
 
 pub(crate) fn router() -> Router<ApiContext> {
@@ -22,6 +23,7 @@ pub(crate) fn router() -> Router<ApiContext> {
         .merge(files::router())
         .merge(chats::router())
         .merge(evaluators::router())
+        .merge(module::router())
 }
 
 async fn handle_ping(ctx: State<ApiContext>) -> Result<Json<CommonResponse>> {

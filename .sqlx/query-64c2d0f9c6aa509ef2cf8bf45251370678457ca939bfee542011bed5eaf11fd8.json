@@ -1,0 +1,65 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update module_v2 set config_data = $1 where module_id = $2\n        returning\n            module_id,\n            module_name,\n            template_id,\n            workspace_id,\n            module_category,\n            config_data,\n            created_at \"created_at: Timestamptz\",\n            updated_at \"updated_at: Timestamptz\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "module_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "module_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "template_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "workspace_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "module_category",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "config_data",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at: Timestamptz",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "updated_at: Timestamptz",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Jsonb",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "64c2d0f9c6aa509ef2cf8bf45251370678457ca939bfee542011bed5eaf11fd8"
+}
