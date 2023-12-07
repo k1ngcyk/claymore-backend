@@ -21,7 +21,10 @@ struct ModuleBody<T> {
 
 pub(crate) fn router() -> Router<ApiContext> {
     Router::new()
-        .route("/v2/module", post(handle_new_module))
+        .route(
+            "/v2/module",
+            post(handle_new_module).get(handle_module_info),
+        )
         .route("/v2/module/list", get(handle_list_module))
         .route("/v2/module/try", post(handle_try_module))
         .route("/v2/module/save", post(handle_save_module))
@@ -51,6 +54,12 @@ struct ModuleNewRequest {
     template_id: Option<Uuid>,
     workspace_id: Uuid,
     module_category: String,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+struct ModuleInfoRequest {
+    module_id: Uuid,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug)]
@@ -140,6 +149,129 @@ async fn handle_new_module(
             "module": {
                 "moduleId": module.module_id,
             }
+        }),
+    }))
+}
+
+async fn handle_module_info(
+    auth_user: AuthUser,
+    ctx: State<ApiContext>,
+    Query(req): Query<ModuleInfoRequest>,
+) -> Result<Json<CommonResponse>> {
+    let module_id = req.module_id;
+    let module = sqlx::query_as!(
+        ModuleFromSql,
+        r#"select
+            module_id,
+            module_name,
+            template_id,
+            workspace_id,
+            module_category,
+            config_data,
+            created_at "created_at: Timestamptz",
+            updated_at "updated_at: Timestamptz"
+        from module_v2 where module_id = $1"#,
+        module_id
+    )
+    .fetch_one(&ctx.db)
+    .await?;
+
+    let workspace_id = module.workspace_id;
+    let _member_record = sqlx::query!(
+        // language=PostgreSQL
+        r#"select user_level from workspace_member_v2 where workspace_id = $1 and user_id = $2"#,
+        workspace_id,
+        auth_user.user_id
+    )
+    .fetch_optional(&ctx.db)
+    .await?
+    .ok_or_else(|| Error::Forbidden)?;
+
+    let mut module_status = "Ready";
+
+    let jobs = sqlx::query!(
+        r#"select
+            job_id
+        from job_v2 where module_id = $1 and job_status != 0"#,
+        module_id
+    )
+    .fetch_all(&ctx.db)
+    .await?;
+
+    if jobs.len() > 0 {
+        module_status = "Pending";
+        for job in jobs {
+            let candidates = sqlx::query!(
+                r#"select
+                    candidate_id
+                from candidate_v2 where job_id = $1"#,
+                job.job_id
+            )
+            .fetch_all(&ctx.db)
+            .await?;
+            if candidates.len() > 0 {
+                module_status = "Running";
+                break;
+            }
+        }
+    }
+
+    let files = sqlx::query!(
+        r#"select
+            files.file_id,
+            finish_process,
+            files.file_path,
+            files.file_name
+        from file_module
+        left join files on files.file_id = file_module.file_id
+        where module_id = $1"#,
+        module_id
+    )
+    .fetch_all(&ctx.db)
+    .await?;
+
+    let files = files
+        .iter()
+        .map(|f| {
+            json!({
+                "fileId": f.file_id,
+                "fileName": f.file_name,
+            })
+        })
+        .collect::<Vec<serde_json::Value>>();
+
+    let candidates = sqlx::query!(
+        r#"select
+            content,
+            extra_data,
+            created_at "created_at: Timestamptz",
+            updated_at "updated_at: Timestamptz"
+        from candidate_v2 where module_id = $1"#,
+        module_id
+    )
+    .fetch_all(&ctx.db)
+    .await?;
+
+    let candidates = candidates
+        .iter()
+        .map(|c| {
+            json!({
+                "content": c.content,
+                "extraData": c.extra_data,
+                "createdAt": c.created_at,
+                "updatedAt": c.updated_at,
+            })
+        })
+        .collect::<Vec<serde_json::Value>>();
+
+    Ok(Json(CommonResponse {
+        code: 200,
+        message: "success".to_string(),
+        data: json!({
+            "module": module,
+            "files": files,
+            "candidates": candidates,
+            "status": module_status
         }),
     }))
 }
