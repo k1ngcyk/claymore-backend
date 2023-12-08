@@ -107,6 +107,7 @@ async fn handle_new_module(
     ctx: State<ApiContext>,
     Json(req): Json<ModuleBody<ModuleNewRequest>>,
 ) -> Result<Json<CommonResponse>> {
+    log::info!("{:?}", req);
     let module_name = req.module.module_name;
     let template_id = req.module.template_id;
     let workspace_id = req.module.workspace_id;
@@ -158,6 +159,7 @@ async fn handle_module_info(
     ctx: State<ApiContext>,
     Query(req): Query<ModuleInfoRequest>,
 ) -> Result<Json<CommonResponse>> {
+    log::info!("{:?}", req);
     let module_id = req.module_id;
     let module = sqlx::query_as!(
         ModuleFromSql,
@@ -281,6 +283,7 @@ async fn handle_try_module(
     ctx: State<ApiContext>,
     Json(req): Json<ModuleBody<ModuleTryRequest>>,
 ) -> Result<Json<CommonResponse>> {
+    log::info!("{:?}", req);
     let module_id = req.module.module_id;
     let workspace_id = sqlx::query!(
         r#"select
@@ -382,6 +385,7 @@ async fn handle_save_module(
     ctx: State<ApiContext>,
     Json(req): Json<ModuleBody<ModuleSaveRequest>>,
 ) -> Result<Json<CommonResponse>> {
+    log::info!("{:?}", req);
     let module_id = req.module.module_id;
     let data = req.module.data;
     let workspace_id = sqlx::query!(
@@ -435,6 +439,7 @@ async fn handle_reset_module(
     ctx: State<ApiContext>,
     Json(req): Json<ModuleBody<ModuleResetRequest>>,
 ) -> Result<Json<CommonResponse>> {
+    log::info!("{:?}", req);
     let module_id = req.module.module_id;
     let template_id = req.module.template_id;
     let module = sqlx::query!(
@@ -546,6 +551,7 @@ async fn handle_list_module(
     ctx: State<ApiContext>,
     Query(req): Query<ModuleListRequest>,
 ) -> Result<Json<CommonResponse>> {
+    log::info!("{:?}", req);
     let workspace_id = req.workspace_id;
     let _member_record = sqlx::query!(
         // language=PostgreSQL
@@ -588,6 +594,7 @@ async fn handle_run_module(
     ctx: State<ApiContext>,
     Json(req): Json<ModuleBody<ModuleRunRequest>>,
 ) -> Result<Json<CommonResponse>> {
+    log::info!("{:?}", req);
     let module_id = req.module.module_id;
     let module = sqlx::query!(
         r#"select
@@ -722,6 +729,7 @@ async fn handle_clear_files(
     ctx: State<ApiContext>,
     Json(req): Json<ModuleBody<ModuleClearFilesRequest>>,
 ) -> Result<Json<CommonResponse>> {
+    log::info!("{:?}", req);
     let module_id = req.module.module_id;
     let module = sqlx::query!(
         r#"select
