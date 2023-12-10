@@ -14,6 +14,7 @@ mod files;
 mod generators;
 mod module;
 mod templates;
+mod workspace;
 
 pub(crate) fn router() -> Router<ApiContext> {
     Router::new()
@@ -24,6 +25,7 @@ pub(crate) fn router() -> Router<ApiContext> {
         .merge(chats::router())
         .merge(evaluators::router())
         .merge(module::router())
+        .merge(workspace::router())
 }
 
 async fn handle_ping(ctx: State<ApiContext>) -> Result<Json<CommonResponse>> {

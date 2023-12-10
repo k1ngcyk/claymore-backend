@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select\n            workspace_id,\n            workspace_name,\n            created_at \"created_at: Timestamptz\",\n            updated_at \"updated_at: Timestamptz\"\n        from workspace_v2\n        where owner_id = $1\n        order by created_at desc",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "workspace_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "workspace_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "created_at: Timestamptz",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 3,
+        "name": "updated_at: Timestamptz",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "6f9099fca653845526d04e318552bbf568231d9a1289e44d943e8c2cac804fe4"
+}

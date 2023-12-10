@@ -130,15 +130,70 @@ async fn handle_new_module(
     .await?
     .ok_or_else(|| Error::Forbidden)?;
 
+    let module_config;
+    if let Some(template_id) = req.module.template_id {
+        let template = sqlx::query!(
+            r#"select
+                template_data,
+                template_category
+            from template_v2 where template_id = $1"#,
+            template_id
+        )
+        .fetch_one(&ctx.db)
+        .await?;
+        if template.template_category != module_category {
+            return Err(Error::unprocessable_entity([(
+                "templateId".to_string(),
+                "invalid template".to_string(),
+            )]));
+        }
+        let template_data = template.template_data;
+        let keys = template_data["keys"].as_array().unwrap();
+        let prompt = template_data["prompt"].as_str().unwrap();
+        let separator = template_data["separator"].as_str().unwrap_or_default();
+        let key_configs = &template_data["keyConfigs"];
+        let mut map = serde_json::Map::new();
+        for key in keys {
+            let key = key.as_str().unwrap();
+            let key_config = key_configs[key].as_object().unwrap();
+            let key_display_name = key_config["displayName"].as_str().unwrap();
+            let key_hint = key_config["hint"].as_str().unwrap();
+            map.insert(
+                key.to_string(),
+                json!({
+                    "displayName": key_display_name,
+                    "hint": key_hint,
+                    "value": "",
+                }),
+            );
+        }
+        module_config = json!({
+            "prompt": prompt,
+            "input": "",
+            "keys": keys,
+            "keyConfigs": serde_json::Value::Object(map),
+            "separator": separator,
+        });
+    } else {
+        module_config = json!({
+            "prompt": "",
+            "input": "",
+            "keys": [],
+            "keyConfigs": {},
+            "separator": "",
+        });
+    }
+
     let module = sqlx::query!(
         // language=PostgreSQL
-        r#"insert into module_v2 (module_name, template_id, workspace_id, module_category)
-        values ($1, $2, $3, $4)
+        r#"insert into module_v2 (module_name, template_id, workspace_id, module_category, config_data)
+        values ($1, $2, $3, $4, $5)
         returning module_id"#,
         module_name,
         template_id,
         workspace_id,
-        module_category
+        module_category,
+        module_config
     )
     .fetch_one(&ctx.db)
     .await?;
@@ -193,7 +248,8 @@ async fn handle_module_info(
 
     let jobs = sqlx::query!(
         r#"select
-            job_id
+            job_id,
+            target_count
         from job_v2 where module_id = $1 and job_status != 0"#,
         module_id
     )
@@ -201,19 +257,27 @@ async fn handle_module_info(
     .await?;
 
     if jobs.len() > 0 {
-        module_status = "Pending";
+        let mut all_zero = true;
         for job in jobs {
-            let candidates = sqlx::query!(
+            let counts = sqlx::query!(
                 r#"select
-                    candidate_id
-                from candidate_v2 where job_id = $1"#,
+                    count(*)
+                from candidate_v2 where job_id = $1 group by job_status_group_id"#,
                 job.job_id
             )
             .fetch_all(&ctx.db)
             .await?;
-            if candidates.len() > 0 {
+            all_zero = all_zero && counts.len() == 0;
+            if counts.len() > 0 && counts.len() < job.target_count as usize {
                 module_status = "Running";
                 break;
+            }
+        }
+        if module_status != "Running" {
+            if all_zero {
+                module_status = "Pending";
+            } else {
+                module_status = "Ready";
             }
         }
     }
@@ -441,7 +505,6 @@ async fn handle_reset_module(
 ) -> Result<Json<CommonResponse>> {
     log::info!("{:?}", req);
     let module_id = req.module.module_id;
-    let template_id = req.module.template_id;
     let module = sqlx::query!(
         r#"select
             workspace_id,
