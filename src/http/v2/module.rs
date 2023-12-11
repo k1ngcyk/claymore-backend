@@ -663,7 +663,8 @@ async fn handle_run_module(
         r#"select
             config_data,
             workspace_id,
-            template_id
+            template_id,
+            module_category
         from module_v2 where module_id = $1"#,
         module_id
     )
@@ -759,6 +760,12 @@ async fn handle_run_module(
         .fetch_one(&ctx.db)
         .await?;
 
+        let model_name = if module.module_category == "generator" {
+            "gpt-3.5-turbo"
+        } else {
+            "gpt-4-1106-preview"
+        };
+
         for item in body {
             let input = item["text"].as_str().unwrap().to_string();
             queue::publish_message_evo(
@@ -773,7 +780,7 @@ async fn handle_run_module(
                     "user_id": auth_user.user_id,
                     "separator": separtor,
                     "reference": "",
-                    "model_name": "gpt-3.5-turbo",
+                    "model_name": model_name,
                 }),
             )
             .await;

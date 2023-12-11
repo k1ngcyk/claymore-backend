@@ -579,7 +579,7 @@ pub async fn execute_job_evo(
         user_id,
         module_id,
         tokens.len() as i32,
-        prompt.len() as i32
+        prompt.chars().count() as i32
     )
     .execute(&db)
     .await.unwrap();
@@ -612,7 +612,7 @@ pub async fn execute_job_evo(
         user_id,
         module_id,
         tokens.len() as i32,
-        output.len() as i32
+        output.chars().count() as i32
     )
     .execute(&db)
     .await.unwrap();
