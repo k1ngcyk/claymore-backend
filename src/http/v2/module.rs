@@ -768,9 +768,43 @@ async fn handle_run_module(
     .execute(&ctx.db)
     .await?;
 
-    let module_config = module.config_data;
+    let mut module_config = module.config_data;
 
-    let module_config = module_config.as_object().unwrap();
+    let module_config = module_config.as_object_mut().unwrap();
+
+    let preprocess = module_config["preprocess"].as_array().unwrap().clone();
+    for process in preprocess {
+        let input_keys = process["inputKeys"].as_array().unwrap();
+        let mut prompt = process["prompt"].as_str().unwrap().to_string();
+        let model = process["model"].as_str().unwrap().to_string();
+        let output_key = process["outputKey"].as_str().unwrap();
+        for key in input_keys {
+            let key = key.as_str().unwrap();
+            let key_config = module_config["keyConfigs"][key].as_object().unwrap();
+            prompt = prompt.replace(
+                &format!("@key/{}", key),
+                key_config["value"].as_str().unwrap(),
+            );
+        }
+        let api_key = openai::get_available_key(&ctx.db).await?;
+        let output = openai::chat(
+            ChatRequest {
+                model: model,
+                input: prompt,
+                max_tokens: Some(2048),
+                temperature: Some(0.1),
+                history: None,
+            },
+            &api_key.openai_key,
+        )
+        .await?;
+        openai::release_key(&ctx.db, api_key).await?;
+        let output_key_config = module_config["keyConfigs"][output_key]
+            .as_object_mut()
+            .unwrap();
+        output_key_config["value"] = serde_json::Value::String(output);
+    }
+
     let mut prompt = module_config["prompt"].as_str().unwrap().to_string();
     let keys = module_config["keys"].as_array().unwrap();
     let key_configs = &module_config["keyConfigs"];
