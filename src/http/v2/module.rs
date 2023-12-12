@@ -46,6 +46,20 @@ struct ModuleFromSql {
     updated_at: Option<Timestamptz>,
 }
 
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ModuleWithStatusFromSql {
+    module_id: Uuid,
+    module_name: String,
+    template_id: Option<Uuid>,
+    workspace_id: Uuid,
+    module_category: String,
+    config_data: serde_json::Value,
+    created_at: Timestamptz,
+    updated_at: Option<Timestamptz>,
+    status: Option<String>,
+}
+
 #[derive(serde::Serialize, serde::Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 struct ModuleNewRequest {
@@ -250,7 +264,7 @@ async fn handle_module_info(
         r#"select
             job_id,
             target_count
-        from job_v2 where module_id = $1 and job_status != 0"#,
+        from job_v2 where module_id = $1 and job_status = 0"#,
         module_id
     )
     .fetch_all(&ctx.db)
@@ -527,6 +541,24 @@ async fn handle_reset_module(
     .await?
     .ok_or_else(|| Error::Forbidden)?;
 
+    let _clean_candidate = sqlx::query!(
+        r#"delete from candidate_v2 where module_id = $1"#,
+        module_id
+    )
+    .execute(&ctx.db)
+    .await?;
+
+    let _clean_files = sqlx::query!(r#"delete from file_module where module_id = $1"#, module_id)
+        .execute(&ctx.db)
+        .await?;
+
+    let _update_jobs = sqlx::query!(
+        r#"update job_v2 set job_status = 1 where module_id = $1 and job_status = 0"#,
+        module_id
+    )
+    .execute(&ctx.db)
+    .await?;
+
     let module_config;
     if let Some(template_id) = req.module.template_id {
         let template = sqlx::query!(
@@ -627,18 +659,48 @@ async fn handle_list_module(
     .ok_or_else(|| Error::Forbidden)?;
 
     let modules = sqlx::query_as!(
-        ModuleFromSql,
+        ModuleWithStatusFromSql,
         // language=PostgreSQL
         r#"select
-            module_id,
+            module_v2.module_id,
             module_name,
             template_id,
             workspace_id,
             module_category,
             config_data,
             created_at "created_at: Timestamptz",
-            updated_at "updated_at: Timestamptz"
+            updated_at "updated_at: Timestamptz",
+            case
+                when job_count > 0 then
+                    case
+                        when some_running then 'Running'
+                        when all_zero then 'Pending'
+                        else 'Ready'
+                    end
+                else 'Ready'
+            end as status
         from module_v2
+        left join (
+            select
+                module_id,
+                count(*) as job_count,
+                bool_or(counts < target_count AND counts > 0) as some_running,
+                bool_and(counts = 0) as all_zero
+            from job_v2 j
+            left join (
+                select 
+                    job_id, 
+                    count(distinct job_status_group_id) as counts
+                from
+                    candidate_v2
+                group by
+                    job_id
+            ) c on j.job_id = c.job_id
+            where
+                j.job_status = 0
+            group by
+                j.module_id
+        ) job_status on module_v2.module_id = job_status.module_id
         where workspace_id = $1"#,
         workspace_id
     )
@@ -684,6 +746,27 @@ async fn handle_run_module(
     if _member_record.user_level > 1 {
         return Err(Error::Forbidden);
     }
+
+    let _clean_candidate = sqlx::query!(
+        r#"delete from candidate_v2 where module_id = $1"#,
+        module_id
+    )
+    .execute(&ctx.db)
+    .await?;
+
+    let _reset_files = sqlx::query!(
+        r#"update file_module set finish_process = false where module_id = $1"#,
+        module_id
+    )
+    .execute(&ctx.db)
+    .await?;
+
+    let _update_jobs = sqlx::query!(
+        r#"update job_v2 set job_status = 1 where module_id = $1 and job_status = 0"#,
+        module_id
+    )
+    .execute(&ctx.db)
+    .await?;
 
     let module_config = module.config_data;
 

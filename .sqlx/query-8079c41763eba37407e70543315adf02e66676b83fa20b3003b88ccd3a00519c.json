@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select\n            job_id,\n            target_count\n        from job_v2 where module_id = $1 and job_status != 0",
+  "query": "select\n            job_id,\n            target_count\n        from job_v2 where module_id = $1 and job_status = 0",
   "describe": {
     "columns": [
       {
@@ -24,5 +24,5 @@
       false
     ]
   },
-  "hash": "7eb85ada7d5fbb0e73d6db7698d6d7237b42b76178289effacf4bdfee52d53b6"
+  "hash": "8079c41763eba37407e70543315adf02e66676b83fa20b3003b88ccd3a00519c"
 }

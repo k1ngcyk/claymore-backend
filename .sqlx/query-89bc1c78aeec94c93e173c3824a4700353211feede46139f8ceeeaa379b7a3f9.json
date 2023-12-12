@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "delete from candidate_v2 where module_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "89bc1c78aeec94c93e173c3824a4700353211feede46139f8ceeeaa379b7a3f9"
+}
