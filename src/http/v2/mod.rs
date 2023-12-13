@@ -9,12 +9,13 @@ use serde_json::json;
 use crate::http::CommonResponse;
 
 mod chats;
+mod databases;
 mod evaluators;
 mod files;
 mod generators;
-mod module;
+mod modules;
 mod templates;
-mod workspace;
+mod workspaces;
 
 pub(crate) fn router() -> Router<ApiContext> {
     Router::new()
@@ -24,8 +25,9 @@ pub(crate) fn router() -> Router<ApiContext> {
         .merge(files::router())
         .merge(chats::router())
         .merge(evaluators::router())
-        .merge(module::router())
-        .merge(workspace::router())
+        .merge(modules::router())
+        .merge(workspaces::router())
+        .merge(databases::router())
 }
 
 async fn handle_ping(ctx: State<ApiContext>) -> Result<Json<CommonResponse>> {

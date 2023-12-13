@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "insert into datastore_v2 (workspace_id, datastore_name) values ($1, $2)\n        returning datastore_id, datastore_name",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "datastore_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "datastore_name",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "9519e3d029232c93fa785a336f4333d6e028f752f57550bf4149289dc28d7092"
+}

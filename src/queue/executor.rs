@@ -617,23 +617,54 @@ pub async fn execute_job_evo(
     .execute(&db)
     .await.unwrap();
 
+    struct Result {
+        content: String,
+        extra_data: serde_json::Value,
+    }
     let results;
     if separator != "" {
-        results = output.split(&separator).collect::<Vec<&str>>();
+        results = output
+            .split(&separator)
+            .map(|x| Result {
+                content: x.to_string(),
+                extra_data: serde_json::json!({
+                    "text": input.replace("\u{0000}", ""),
+                }),
+            })
+            .collect::<Vec<Result>>();
     } else {
-        results = vec![output.as_str()];
+        let mut content = output.to_string();
+        let mut extra_data = serde_json::json!({
+            "text": input.replace("\u{0000}", ""),
+        });
+        let try_json = serde_json::from_str::<Value>(&output);
+        if let Ok(try_json) = try_json {
+            if let Some(candidate) = try_json["candidate"].as_object() {
+                if let Some(text) = candidate["data"].as_str() {
+                    if candidate.contains_key("rating") {
+                        content = text.to_string();
+                        extra_data = serde_json::json!({
+                            "text": input.replace("\u{0000}", ""),
+                            "rating": candidate["rating"].clone(),
+                        });
+                    }
+                }
+            }
+        }
+        results = vec![Result {
+            content,
+            extra_data,
+        }];
     }
     let job_status_group_id = Uuid::new_v4();
     for result in results {
         let _result = sqlx::query!(
             r#"insert into candidate_v2 (content, module_id, job_id, job_status_group_id, extra_data) values ($1, $2, $3, $4, $5)"#,
-            result,
+            result.content,
             module_id,
             job_id,
             job_status_group_id,
-            serde_json::json!({
-                "text": input.replace("\u{0000}", ""),
-            })
+            result.extra_data
         )
         .execute(&db)
         .await

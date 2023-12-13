@@ -31,6 +31,7 @@ pub(crate) fn router() -> Router<ApiContext> {
         .route("/v2/module/reset", post(handle_reset_module))
         .route("/v2/module/run", post(handle_run_module))
         .route("/v2/module/clearFiles", post(handle_clear_files))
+        .route("/v2/module/saveData", post(handle_save_data))
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -114,6 +115,14 @@ struct ModuleRunRequest {
 #[serde(rename_all = "camelCase")]
 struct ModuleClearFilesRequest {
     module_id: Uuid,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+struct ModuleSaveDataRequest {
+    module_id: Uuid,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tags: Option<Vec<String>>,
 }
 
 async fn handle_new_module(
@@ -418,7 +427,7 @@ async fn handle_try_module(
         auth_user.user_id,
         module_id,
         tokens.len() as i32,
-        prompt.len() as i32
+        prompt.chars().count() as i32
     )
     .execute(&ctx.db)
     .await?;
@@ -444,7 +453,7 @@ async fn handle_try_module(
         auth_user.user_id,
         module_id,
         tokens.len() as i32,
-        output.len() as i32
+        output.chars().count() as i32
     )
     .execute(&ctx.db)
     .await?;
@@ -941,6 +950,84 @@ async fn handle_clear_files(
     sqlx::query!(r#"delete from file_module where module_id = $1"#, module_id)
         .execute(&ctx.db)
         .await?;
+
+    Ok(Json(CommonResponse {
+        code: 200,
+        message: "success".to_string(),
+        data: json!({}),
+    }))
+}
+
+async fn handle_save_data(
+    auth_user: AuthUser,
+    ctx: State<ApiContext>,
+    Json(req): Json<ModuleBody<ModuleSaveDataRequest>>,
+) -> Result<Json<CommonResponse>> {
+    log::info!("{:?}", req);
+    let module_id = req.module.module_id;
+    let module = sqlx::query!(
+        r#"select
+            workspace_id,
+            module_category,
+            module_name
+        from module_v2 where module_id = $1"#,
+        module_id
+    )
+    .fetch_one(&ctx.db)
+    .await?;
+    let workspace_id = module.workspace_id;
+
+    let _member_record = sqlx::query!(
+        // language=PostgreSQL
+        r#"select user_level from workspace_member_v2 where workspace_id = $1 and user_id = $2"#,
+        workspace_id,
+        auth_user.user_id
+    )
+    .fetch_optional(&ctx.db)
+    .await?
+    .ok_or_else(|| Error::Forbidden)?;
+
+    let candidates = sqlx::query!(
+        r#"select
+            content,
+            module_id,
+            extra_data
+        from candidate_v2 where module_id = $1"#,
+        module_id
+    )
+    .fetch_all(&ctx.db)
+    .await?;
+
+    let distinct_tags = sqlx::query!(
+        r#"select distinct tags from data_v2 where module_id = $1 and is_raw = true"#,
+        module_id
+    )
+    .fetch_all(&ctx.db)
+    .await?;
+
+    let default_tags = vec![format!(
+        "{}-{}",
+        module.module_name,
+        distinct_tags.len() + 1
+    )];
+    let tags = req.module.tags.clone().unwrap_or(default_tags);
+    let tags = tags.join(",");
+
+    for candidate in candidates {
+        let content = candidate.content;
+        let extra_data = candidate.extra_data;
+        sqlx::query!(
+            r#"insert into data_v2 (module_id, data_module_type, is_raw, tags, data_content, extra_data) values ($1, $2, $3, $4, $5, $6)"#,
+            module_id,
+            module.module_category,
+            true,
+            tags,
+            content,
+            extra_data
+        )
+        .execute(&ctx.db)
+        .await?;
+    }
 
     Ok(Json(CommonResponse {
         code: 200,

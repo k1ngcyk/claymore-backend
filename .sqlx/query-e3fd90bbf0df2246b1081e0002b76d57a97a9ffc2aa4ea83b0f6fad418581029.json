@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select\n                distinct data_v2.module_id,\n                m.module_name,\n                m.module_category\n            from data_v2\n            left join (\n                select\n                    module_id, module_name, module_category\n                from module_v2 where workspace_id = $1\n            ) as m on m.module_id = data_v2.module_id\n            where is_raw = true",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "module_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "module_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "module_category",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "e3fd90bbf0df2246b1081e0002b76d57a97a9ffc2aa4ea83b0f6fad418581029"
+}
