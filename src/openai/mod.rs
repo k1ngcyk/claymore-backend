@@ -49,6 +49,11 @@ pub async fn chat(
     request: ChatRequest,
     api_key: &String,
 ) -> Result<String, async_openai::error::OpenAIError> {
+    log::info!(
+        "chat with: model: {}, input_chars: {}",
+        &request.model,
+        &request.input.chars().count(),
+    );
     let mut messages;
     if let Some(chat_history) = request.history {
         messages = chat_history

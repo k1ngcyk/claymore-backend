@@ -1,0 +1,47 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select\n            d.data_id,\n            d.datastore_id,\n            d.module_id,\n            w.workspace_id,\n            w.user_level\n        from data_v2 d\n        left join module_v2 m on d.module_id = m.module_id\n        left join (\n            select\n                wmv2.workspace_id,\n                wmv2.user_level\n            from workspace_member_v2 wmv2\n            where user_id = $1\n        ) w on w.workspace_id = m.workspace_id\n        where data_id = any($2)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "data_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "datastore_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "module_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "workspace_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "user_level",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "ea5e2ad8d3df02b764b876f3f46f2ad5fb9a72b328bf42ed0496f6438de03322"
+}

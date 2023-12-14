@@ -640,13 +640,12 @@ pub async fn execute_job_evo(
         if let Ok(try_json) = try_json {
             if let Some(candidate) = try_json["candidate"].as_object() {
                 if let Some(text) = candidate["data"].as_str() {
-                    if candidate.contains_key("rating") {
-                        content = text.to_string();
-                        extra_data = serde_json::json!({
-                            "text": input.replace("\u{0000}", ""),
-                            "rating": candidate["rating"].clone(),
-                        });
-                    }
+                    content = text.to_string();
+                    extra_data = serde_json::json!({
+                        "text": input.replace("\u{0000}", ""),
+                        "reference": reference,
+                        "rating": try_json["rating"].clone(),
+                    });
                 }
             }
         }

@@ -18,6 +18,7 @@ pub(crate) fn router() -> Router<ApiContext> {
             post(handle_new_database).get(handle_database_info),
         )
         .route("/v2/database/list", get(handle_list_database))
+        .route("/v2/database/moveData", post(handle_move_data))
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug)]
@@ -70,6 +71,13 @@ struct DatabaseInfoRequest {
 struct DatabaseListRequest {
     workspace_id: Uuid,
     is_raw: bool,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+struct DatabaseMoveDataRequest {
+    database_id: Uuid,
+    data_id: Vec<Uuid>,
 }
 
 async fn handle_new_database(
@@ -333,5 +341,60 @@ async fn handle_list_database(
         data: json!({
             "databases": databases,
         }),
+    }))
+}
+
+async fn handle_move_data(
+    auth_user: AuthUser,
+    ctx: State<ApiContext>,
+    Json(req): Json<DatabaseBody<DatabaseMoveDataRequest>>,
+) -> Result<Json<CommonResponse>> {
+    let all_records = sqlx::query!(
+        r#"select
+            d.data_id,
+            d.datastore_id,
+            d.module_id,
+            w.workspace_id,
+            w.user_level
+        from data_v2 d
+        left join module_v2 m on d.module_id = m.module_id
+        left join (
+            select
+                wmv2.workspace_id,
+                wmv2.user_level
+            from workspace_member_v2 wmv2
+            where user_id = $1
+        ) w on w.workspace_id = m.workspace_id
+        where data_id = any($2)"#,
+        auth_user.user_id,
+        &req.database.data_id
+    )
+    .fetch_all(&ctx.db)
+    .await?;
+
+    let mut count = 0;
+    for record in all_records {
+        if record.workspace_id.is_some() && record.user_level.is_some() {
+            if record.user_level.unwrap() == 0 && record.datastore_id.is_none() {
+                sqlx::query!(
+                    r#"update data_v2 set datastore_id = $1, is_raw = false where data_id = $2"#,
+                    req.database.database_id,
+                    record.data_id
+                )
+                .execute(&ctx.db)
+                .await?;
+                count += 1;
+            }
+        }
+    }
+
+    if count == 0 {
+        return Err(Error::Forbidden);
+    }
+
+    Ok(Json(CommonResponse {
+        code: 200,
+        message: "success".to_string(),
+        data: json!({}),
     }))
 }
