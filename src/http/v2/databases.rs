@@ -14,10 +14,10 @@ use crate::http::CommonResponse;
 pub(crate) fn router() -> Router<ApiContext> {
     Router::new()
         .route(
-            "/database",
+            "/v2/database",
             post(handle_new_database).get(handle_database_info),
         )
-        .route("/database/list", get(handle_list_database))
+        .route("/v2/database/list", get(handle_list_database))
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug)]
@@ -215,12 +215,12 @@ async fn handle_database_info(
 async fn handle_list_database(
     auth_user: AuthUser,
     ctx: State<ApiContext>,
-    Json(req): Json<DatabaseBody<DatabaseListRequest>>,
+    Query(req): Query<DatabaseListRequest>,
 ) -> Result<Json<CommonResponse>> {
     let _member_record = sqlx::query!(
         // language=PostgreSQL
         r#"select user_level from workspace_member_v2 where workspace_id = $1 and user_id = $2"#,
-        req.database.workspace_id,
+        req.workspace_id,
         auth_user.user_id
     )
     .fetch_optional(&ctx.db)
@@ -228,7 +228,7 @@ async fn handle_list_database(
     .ok_or_else(|| Error::Forbidden)?;
 
     let databases;
-    if req.database.is_raw {
+    if req.is_raw {
         let records = sqlx::query!(
             r#"select
                 distinct data_v2.module_id,
@@ -241,46 +241,90 @@ async fn handle_list_database(
                 from module_v2 where workspace_id = $1
             ) as m on m.module_id = data_v2.module_id
             where is_raw = true"#,
-            req.database.workspace_id
+            req.workspace_id
         )
         .fetch_all(&ctx.db)
         .await?;
-        databases = records
-            .iter()
-            .map(|r| {
-                let name = if r.module_id.is_none() {
-                    "Unknown".to_string()
-                } else {
-                    r.module_name.clone()
-                };
-                json!({
-                    "category": r.module_category,
-                    "databaseId": r.module_id,
-                    "databaseName": name,
-                    "isRaw": true,
+
+        let mut result = Vec::new();
+        for r in records {
+            let name = if r.module_id.is_none() {
+                "Unknown".to_string()
+            } else {
+                r.module_name.clone()
+            };
+            let records = sqlx::query!(
+                r#"select
+                        distinct tags
+                        from data_v2
+                        where is_raw = true and module_id = $1"#,
+                r.module_id
+            )
+            .fetch_all(&ctx.db)
+            .await?;
+            let tags = records
+                .iter()
+                .map(|r| {
+                    r.tags
+                        .clone()
+                        .unwrap_or_default()
+                        .split(',')
+                        .map(|s| s.to_string())
+                        .collect::<Vec<String>>()
                 })
-            })
-            .collect::<Vec<serde_json::Value>>();
+                .flatten()
+                .collect::<Vec<String>>();
+            result.push(json!({
+                "category": r.module_category,
+                "databaseId": r.module_id,
+                "databaseName": name,
+                "isRaw": true,
+                "tags": tags,
+            }));
+        }
+        databases = result;
     } else {
         let records = sqlx::query!(
             r#"select
                 datastore_id,
                 datastore_name
             from datastore_v2 where workspace_id = $1"#,
-            req.database.workspace_id
+            req.workspace_id
         )
         .fetch_all(&ctx.db)
         .await?;
-        databases = records
-            .iter()
-            .map(|r| {
-                json!({
-                    "databaseId": r.datastore_id,
-                    "databaseName": r.datastore_name,
-                    "isRaw": false,
+
+        let mut result = Vec::new();
+        for r in records {
+            let records = sqlx::query!(
+                r#"select
+                        distinct tags
+                        from data_v2
+                        where is_raw = false and datastore_id = $1"#,
+                r.datastore_id
+            )
+            .fetch_all(&ctx.db)
+            .await?;
+            let tags = records
+                .iter()
+                .map(|r| {
+                    r.tags
+                        .clone()
+                        .unwrap_or_default()
+                        .split(',')
+                        .map(|s| s.to_string())
+                        .collect::<Vec<String>>()
                 })
-            })
-            .collect::<Vec<serde_json::Value>>();
+                .flatten()
+                .collect::<Vec<String>>();
+            result.push(json!({
+                "databaseId": r.datastore_id,
+                "databaseName": r.datastore_name,
+                "isRaw": false,
+                "tags": tags,
+            }));
+        }
+        databases = result;
     }
 
     Ok(Json(CommonResponse {

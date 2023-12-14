@@ -32,6 +32,7 @@ pub(crate) fn router() -> Router<ApiContext> {
         .route("/v2/module/run", post(handle_run_module))
         .route("/v2/module/clearFiles", post(handle_clear_files))
         .route("/v2/module/saveData", post(handle_save_data))
+        .route("/v2/module/assignData", post(handle_assign_data))
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -125,6 +126,15 @@ struct ModuleSaveDataRequest {
     tags: Option<Vec<String>>,
 }
 
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+struct ModuleAssignDataRequest {
+    module_id: Uuid,
+    datastore_id: Uuid,
+    is_raw: bool,
+    tags: Vec<String>,
+}
+
 async fn handle_new_module(
     auth_user: AuthUser,
     ctx: State<ApiContext>,
@@ -175,6 +185,7 @@ async fn handle_new_module(
         let prompt = template_data["prompt"].as_str().unwrap();
         let separator = template_data["separator"].as_str().unwrap_or_default();
         let key_configs = &template_data["keyConfigs"];
+        let preprocess = &template_data["preprocess"];
         let mut map = serde_json::Map::new();
         for key in keys {
             let key = key.as_str().unwrap();
@@ -196,6 +207,8 @@ async fn handle_new_module(
             "keys": keys,
             "keyConfigs": serde_json::Value::Object(map),
             "separator": separator,
+            "preprocess": preprocess,
+            "assignData": {},
         });
     } else {
         module_config = json!({
@@ -204,6 +217,8 @@ async fn handle_new_module(
             "keys": [],
             "keyConfigs": {},
             "separator": "",
+            "preprocess": [],
+            "assignData": {},
         });
     }
 
@@ -590,6 +605,7 @@ async fn handle_reset_module(
         let prompt = template_data["prompt"].as_str().unwrap();
         let separator = template_data["separator"].as_str().unwrap_or_default();
         let key_configs = &template_data["keyConfigs"];
+        let preprocess = &template_data["preprocess"];
         let mut map = serde_json::Map::new();
         for key in keys {
             let key = key.as_str().unwrap();
@@ -611,6 +627,8 @@ async fn handle_reset_module(
             "keys": keys,
             "keyConfigs": serde_json::Value::Object(map),
             "separator": separator,
+            "preprocess": preprocess,
+            "assignData": {},
         });
     } else {
         module_config = json!({
@@ -619,6 +637,8 @@ async fn handle_reset_module(
             "keys": [],
             "keyConfigs": {},
             "separator": "",
+            "preprocess": [],
+            "assignData": {},
         });
     }
 
@@ -827,12 +847,102 @@ async fn handle_run_module(
     }
     let separtor = module_config["separator"].as_str().unwrap_or_default();
 
+    let assign_data = &module_config["assignData"];
+    let datastore_id = assign_data["datastoreId"].as_str();
+    let is_raw = assign_data["isRaw"].as_bool();
+    let tags = assign_data["tags"].as_str();
+    if let (Some(datastore_id), Some(is_raw), Some(tags)) = (datastore_id, is_raw, tags) {
+        let datastore_id = Uuid::parse_str(datastore_id).unwrap();
+        let tags = tags
+            .split(',')
+            .map(|s| s.to_string())
+            .collect::<Vec<String>>();
+        let like_conditions = tags
+            .iter()
+            .map(|tag| {
+                format!(
+                    "(tags LIKE '%{}%' OR tags LIKE '{},%' OR tags LIKE '%,{}' OR tags = '{}')",
+                    tag, tag, tag, tag
+                )
+            })
+            .collect::<Vec<_>>()
+            .join(" OR ");
+
+        #[derive(serde::Serialize, serde::Deserialize, sqlx::FromRow)]
+        struct DataFromSql {
+            data_content: String,
+            extra_data: Option<serde_json::Value>,
+        }
+        let assigned_data: Vec<DataFromSql>;
+        if is_raw {
+            let query = format!(
+                r#"select
+                    data_content,
+                    extra_data
+                from data_v2 where module_id = '{}' and is_raw = true and ({})"#,
+                datastore_id, like_conditions
+            );
+            assigned_data = sqlx::query_as(&query).fetch_all(&ctx.db).await?;
+        } else {
+            let query = format!(
+                r#"select
+                    data_content,
+                    extra_data
+                from data_v2 where datastore_id = '{}' and is_raw = false and ({})"#,
+                datastore_id, like_conditions
+            );
+            assigned_data = sqlx::query_as(&query).fetch_all(&ctx.db).await?;
+        }
+        log::info!("assigned: count: {}", assigned_data.len());
+        let job = sqlx::query!(
+            r#"insert into job_v2 (module_id, config_data, workspace_id, target_count) values ($1, $2, $3, $4) returning job_id"#,
+            module_id,
+            json!({}),
+            module.workspace_id,
+            assigned_data.len() as i32
+        )
+        .fetch_one(&ctx.db)
+        .await?;
+        let model_name = if module.module_category == "generator" {
+            "gpt-3.5-turbo"
+        } else {
+            "gpt-4-1106-preview"
+        };
+
+        for data in assigned_data {
+            let input = data.data_content;
+            let mut reference = "".to_string();
+            if let Some(extra_data) = data.extra_data {
+                if let Some(reference_data) = extra_data["text"].as_str() {
+                    reference = reference_data.to_string();
+                }
+            }
+            queue::publish_message_evo(
+                &queue::make_channel(&ctx.config.rabbitmq_url).await,
+                json!({
+                    "module_id": module_id,
+                    "job_id": job.job_id,
+                    "workspace_id": module.workspace_id,
+                    "file_id": "",
+                    "input": input,
+                    "prompt": prompt,
+                    "user_id": auth_user.user_id,
+                    "separator": separtor,
+                    "reference": reference,
+                    "model_name": model_name,
+                }),
+            )
+            .await;
+        }
+    }
+
     let files = sqlx::query!(
         r#"select
             files.file_id,
             finish_process,
             files.file_path,
-            files.file_name
+            files.file_name,
+            files.file_type
         from file_module
         left join files on files.file_id = file_module.file_id
         where module_id = $1"#,
@@ -847,69 +957,116 @@ async fn handle_run_module(
         }
         log::info!("extracting: file_name: {}", &file.file_name);
         let file_path = Path::new(&ctx.config.upload_dir).join(&file.file_path);
-        let client = reqwest::Client::builder().build().unwrap();
-
-        let mut headers = reqwest::header::HeaderMap::new();
-        headers.insert("Accept", "application/json".parse().unwrap());
-
-        let form = reqwest::multipart::Form::new()
-            .part(
-                "files",
-                reqwest::multipart::Part::bytes(std::fs::read(file_path).unwrap())
-                    .file_name(file.file_name),
+        if file.file_type == "csv" {
+            #[derive(serde::Serialize, serde::Deserialize)]
+            struct CsvRecord {
+                input: String,
+                reference: String,
+            }
+            let mut reader = csv::Reader::from_path(&file_path).unwrap();
+            let csv_data = reader
+                .deserialize::<CsvRecord>()
+                .map(|r| r.unwrap())
+                .collect::<Vec<CsvRecord>>();
+            let job = sqlx::query!(
+                r#"insert into job_v2 (module_id, config_data, workspace_id, target_count) values ($1, $2, $3, $4) returning job_id"#,
+                module_id,
+                json!({}),
+                module.workspace_id,
+                csv_data.len() as i32
             )
-            .text("strategy", "auto")
-            .text("chunking_strategy", "by_title")
-            .text("new_after_n_chars", "500")
-            .text("max_characters", "1000")
-            .text("combine_under_n_chars", "500");
-
-        let request = client
-            .request(
-                reqwest::Method::POST,
-                format!("{}/general/v0/general", &ctx.config.unstructured_url),
-            )
-            .headers(headers)
-            .multipart(form);
-
-        let response = request.send().await.unwrap();
-        let body = response.json::<serde_json::Value>().await.unwrap();
-        let body = body.as_array().unwrap();
-        log::info!("extracted: count: {}", body.len());
-        let job = sqlx::query!(
-            r#"insert into job_v2 (module_id, config_data, workspace_id, target_count) values ($1, $2, $3, $4) returning job_id"#,
-            module_id,
-            json!({}),
-            module.workspace_id,
-            body.len() as i32
-        )
-        .fetch_one(&ctx.db)
-        .await?;
-
-        let model_name = if module.module_category == "generator" {
-            "gpt-3.5-turbo"
+            .fetch_one(&ctx.db)
+            .await?;
+            let model_name = if module.module_category == "generator" {
+                "gpt-3.5-turbo"
+            } else {
+                "gpt-4-1106-preview"
+            };
+            for data in csv_data {
+                let input = data.input;
+                let reference = data.reference;
+                queue::publish_message_evo(
+                    &queue::make_channel(&ctx.config.rabbitmq_url).await,
+                    json!({
+                        "module_id": module_id,
+                        "job_id": job.job_id,
+                        "workspace_id": module.workspace_id,
+                        "file_id": "",
+                        "input": input,
+                        "prompt": prompt,
+                        "user_id": auth_user.user_id,
+                        "separator": separtor,
+                        "reference": reference,
+                        "model_name": model_name,
+                    }),
+                )
+                .await;
+            }
         } else {
-            "gpt-4-1106-preview"
-        };
+            let client = reqwest::Client::builder().build().unwrap();
 
-        for item in body {
-            let input = item["text"].as_str().unwrap().to_string();
-            queue::publish_message_evo(
-                &queue::make_channel(&ctx.config.rabbitmq_url).await,
-                json!({
-                    "module_id": module_id,
-                    "job_id": job.job_id,
-                    "workspace_id": module.workspace_id,
-                    "file_id": file.file_id,
-                    "input": input,
-                    "prompt": prompt,
-                    "user_id": auth_user.user_id,
-                    "separator": separtor,
-                    "reference": "",
-                    "model_name": model_name,
-                }),
+            let mut headers = reqwest::header::HeaderMap::new();
+            headers.insert("Accept", "application/json".parse().unwrap());
+
+            let form = reqwest::multipart::Form::new()
+                .part(
+                    "files",
+                    reqwest::multipart::Part::bytes(std::fs::read(file_path).unwrap())
+                        .file_name(file.file_name),
+                )
+                .text("strategy", "auto")
+                .text("chunking_strategy", "by_title")
+                .text("new_after_n_chars", "500")
+                .text("max_characters", "1000")
+                .text("combine_under_n_chars", "500");
+
+            let request = client
+                .request(
+                    reqwest::Method::POST,
+                    format!("{}/general/v0/general", &ctx.config.unstructured_url),
+                )
+                .headers(headers)
+                .multipart(form);
+
+            let response = request.send().await.unwrap();
+            let body = response.json::<serde_json::Value>().await.unwrap();
+            let body = body.as_array().unwrap();
+            log::info!("extracted: count: {}", body.len());
+            let job = sqlx::query!(
+                r#"insert into job_v2 (module_id, config_data, workspace_id, target_count) values ($1, $2, $3, $4) returning job_id"#,
+                module_id,
+                json!({}),
+                module.workspace_id,
+                body.len() as i32
             )
-            .await;
+            .fetch_one(&ctx.db)
+            .await?;
+
+            let model_name = if module.module_category == "generator" {
+                "gpt-3.5-turbo"
+            } else {
+                "gpt-4-1106-preview"
+            };
+
+            for item in body {
+                let input = item["text"].as_str().unwrap().to_string();
+                queue::publish_message_evo(
+                    &queue::make_channel(&ctx.config.rabbitmq_url).await,
+                    json!({
+                        "module_id": module_id,
+                        "job_id": job.job_id,
+                        "workspace_id": module.workspace_id,
+                        "file_id": file.file_id,
+                        "input": input,
+                        "prompt": prompt,
+                        "user_id": auth_user.user_id,
+                        "separator": separtor,
+                        "reference": "",
+                        "model_name": model_name,
+                    }),
+                )
+                .await;
+            }
         }
     }
 
@@ -1033,5 +1190,71 @@ async fn handle_save_data(
         code: 200,
         message: "success".to_string(),
         data: json!({}),
+    }))
+}
+
+async fn handle_assign_data(
+    auth_user: AuthUser,
+    ctx: State<ApiContext>,
+    Json(req): Json<ModuleBody<ModuleAssignDataRequest>>,
+) -> Result<Json<CommonResponse>> {
+    log::info!("{:?}", req);
+    let module_id = req.module.module_id;
+    let module = sqlx::query!(
+        r#"select
+            workspace_id,
+            module_category,
+            module_name
+        from module_v2 where module_id = $1"#,
+        module_id
+    )
+    .fetch_one(&ctx.db)
+    .await?;
+    let workspace_id = module.workspace_id;
+
+    let _member_record = sqlx::query!(
+        // language=PostgreSQL
+        r#"select user_level from workspace_member_v2 where workspace_id = $1 and user_id = $2"#,
+        workspace_id,
+        auth_user.user_id
+    )
+    .fetch_optional(&ctx.db)
+    .await?
+    .ok_or_else(|| Error::Forbidden)?;
+
+    let datastore_id = req.module.datastore_id;
+    let is_raw = req.module.is_raw;
+    let tags = req.module.tags.clone();
+    let tags = tags.join(",");
+
+    let module = sqlx::query_as!(
+        ModuleFromSql,
+        r#"update module_v2 set config_data['assignData'] = to_jsonb($1::jsonb) where module_id = $2
+        returning
+            module_id,
+            module_name,
+            template_id,
+            workspace_id,
+            module_category,
+            config_data,
+            created_at "created_at: Timestamptz",
+            updated_at "updated_at: Timestamptz"
+        "#,
+        json!({
+            "datastoreId": datastore_id,
+            "isRaw": is_raw,
+            "tags": tags,
+        }),
+        module_id
+    )
+    .fetch_one(&ctx.db)
+    .await?;
+
+    Ok(Json(CommonResponse {
+        code: 200,
+        message: "success".to_string(),
+        data: json!({
+            "module": module,
+        }),
     }))
 }

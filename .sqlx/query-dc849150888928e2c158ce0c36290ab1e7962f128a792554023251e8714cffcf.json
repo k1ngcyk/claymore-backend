@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select\n                        distinct tags\n                        from data_v2\n                        where is_raw = false and datastore_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "tags",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "dc849150888928e2c158ce0c36290ab1e7962f128a792554023251e8714cffcf"
+}

@@ -1,0 +1,65 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update module_v2 set config_data['assignData'] = to_jsonb($1::jsonb) where module_id = $2\n        returning\n            module_id,\n            module_name,\n            template_id,\n            workspace_id,\n            module_category,\n            config_data,\n            created_at \"created_at: Timestamptz\",\n            updated_at \"updated_at: Timestamptz\"\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "module_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "module_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "template_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "workspace_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 4,
+        "name": "module_category",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "config_data",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at: Timestamptz",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "updated_at: Timestamptz",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Jsonb",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "66e25289f9ff718abf411f2648cc4f750a0b0954b7d4409b9631493cd89696b3"
+}

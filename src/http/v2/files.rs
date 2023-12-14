@@ -78,6 +78,20 @@ async fn handle_file_upload(
         .await?;
         if let Some(file) = file_from_query {
             if let Some(module_id) = module_id {
+                let module_category = sqlx::query!(
+                    r#"select module_category from module_v2 where module_id = $1"#,
+                    module_id
+                )
+                .fetch_one(&ctx.db)
+                .await?
+                .module_category;
+
+                if module_category == "evaluator" && file.file_type != "csv" {
+                    return Err(Error::unprocessable_entity([(
+                        "file",
+                        "file for evaluator must be csv",
+                    )]));
+                }
                 sqlx::query!(
                     r#"insert into file_module (module_id, file_id) values ($1, $2)"#,
                     module_id,
@@ -102,6 +116,8 @@ async fn handle_file_upload(
                 )]));
             }
         }
+        let file_extension = Path::new(&filename).extension().unwrap().to_str().unwrap();
+
         let file_from_query = sqlx::query_as!(
             FileFromSql,
             r#"insert into files (file_name, file_path, file_type, md5) values ($1, $2, $3, $4) returning
@@ -116,7 +132,7 @@ async fn handle_file_upload(
             "#,
             filename,
             &file_path_store,
-            "",
+            file_extension,
             file_md5,
         )
         .fetch_one(&ctx.db)
@@ -125,6 +141,20 @@ async fn handle_file_upload(
         file.write_all(&field_data).await.unwrap();
         let file_id = file_from_query.file_id;
         if let Some(module_id) = module_id {
+            let module_category = sqlx::query!(
+                r#"select module_category from module_v2 where module_id = $1"#,
+                module_id
+            )
+            .fetch_one(&ctx.db)
+            .await?
+            .module_category;
+
+            if module_category == "evaluator" && file_extension != "csv" {
+                return Err(Error::unprocessable_entity([(
+                    "file",
+                    "file for evaluator must be csv",
+                )]));
+            }
             sqlx::query!(
                 r#"insert into file_module (module_id, file_id) values ($1, $2)"#,
                 module_id,

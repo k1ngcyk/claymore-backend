@@ -553,8 +553,7 @@ pub async fn execute_job_evo(
     let job_id = Uuid::parse_str(job_id).unwrap();
     let workspace_id = message["workspace_id"].as_str().unwrap();
     let workspace_id = Uuid::parse_str(workspace_id).unwrap();
-    let file_id = message["file_id"].as_str().unwrap();
-    let file_id = Uuid::parse_str(file_id).unwrap();
+    let file_id = message["file_id"].as_str().unwrap_or_default();
     let input = message["input"].as_str().unwrap();
     let input = input.to_string();
     let prompt = message["prompt"].as_str().unwrap();
@@ -671,15 +670,18 @@ pub async fn execute_job_evo(
         .unwrap();
     }
 
-    sqlx::query!(
-        r#"update file_module set finish_process = $1 where file_id = $2 and module_id = $3"#,
-        true,
-        file_id,
-        module_id
-    )
-    .execute(&db)
-    .await
-    .unwrap();
+    if file_id != "" {
+        let file_id = Uuid::parse_str(file_id).unwrap();
+        sqlx::query!(
+            r#"update file_module set finish_process = $1 where file_id = $2 and module_id = $3"#,
+            true,
+            file_id,
+            module_id
+        )
+        .execute(&db)
+        .await
+        .unwrap();
+    }
 
     Ok(ExecuteResultV2::Success)
 }
