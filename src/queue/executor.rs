@@ -636,7 +636,8 @@ pub async fn execute_job_evo(
         let mut extra_data = serde_json::json!({
             "text": input.replace("\u{0000}", ""),
         });
-        let try_json = serde_json::from_str::<Value>(&output);
+        let json_string = output.replace("```json\n", "").replace("```", "");
+        let try_json = serde_json::from_str::<Value>(&json_string);
         if let Ok(try_json) = try_json {
             if let Some(candidate) = try_json["candidate"].as_object() {
                 if let Some(text) = candidate["data"].as_str() {
