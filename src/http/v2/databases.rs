@@ -126,24 +126,27 @@ async fn handle_database_info(
 ) -> Result<Json<CommonResponse>> {
     log::info!("{:?}", req);
     let workspace_id;
+    let database_name;
     if req.is_raw {
-        workspace_id = sqlx::query!(
+        let record = sqlx::query!(
             // language=PostgreSQL
-            r#"select workspace_id from module_v2 where module_id = $1"#,
+            r#"select workspace_id, module_name from module_v2 where module_id = $1"#,
             req.database_id
         )
         .fetch_one(&ctx.db)
-        .await?
-        .workspace_id;
+        .await?;
+        workspace_id = record.workspace_id;
+        database_name = record.module_name;
     } else {
-        workspace_id = sqlx::query!(
+        let record = sqlx::query!(
             // language=PostgreSQL
-            r#"select workspace_id from datastore_v2 where datastore_id = $1"#,
+            r#"select workspace_id, datastore_name from datastore_v2 where datastore_id = $1"#,
             req.database_id
         )
         .fetch_one(&ctx.db)
-        .await?
-        .workspace_id;
+        .await?;
+        workspace_id = record.workspace_id;
+        database_name = record.datastore_name;
     }
     let _member_record = sqlx::query!(
         // language=PostgreSQL
@@ -214,6 +217,7 @@ async fn handle_database_info(
         code: 200,
         message: "success".to_string(),
         data: json!({
+            "databaseName": database_name,
             "data": data,
             "tags": tags,
         }),
@@ -270,6 +274,17 @@ async fn handle_list_database(
             )
             .fetch_all(&ctx.db)
             .await?;
+            let data_count = sqlx::query!(
+                r#"select
+                    count(data_id)
+                    from data_v2
+                    where is_raw = true and module_id = $1"#,
+                r.module_id
+            )
+            .fetch_one(&ctx.db)
+            .await?
+            .count
+            .unwrap_or(0);
             let tags = records
                 .iter()
                 .map(|r| {
@@ -284,6 +299,7 @@ async fn handle_list_database(
                 .collect::<Vec<String>>();
             result.push(json!({
                 "category": r.module_category,
+                "dataCount": data_count,
                 "databaseId": r.module_id,
                 "databaseName": name,
                 "isRaw": true,
@@ -313,6 +329,17 @@ async fn handle_list_database(
             )
             .fetch_all(&ctx.db)
             .await?;
+            let data_count = sqlx::query!(
+                r#"select
+                    count(data_id)
+                    from data_v2
+                    where is_raw = false and datastore_id = $1"#,
+                r.datastore_id
+            )
+            .fetch_one(&ctx.db)
+            .await?
+            .count
+            .unwrap_or(0);
             let tags = records
                 .iter()
                 .map(|r| {
@@ -326,6 +353,7 @@ async fn handle_list_database(
                 .flatten()
                 .collect::<Vec<String>>();
             result.push(json!({
+                "dataCount": data_count,
                 "databaseId": r.datastore_id,
                 "databaseName": r.datastore_name,
                 "isRaw": false,

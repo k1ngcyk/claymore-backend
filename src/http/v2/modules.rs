@@ -130,7 +130,7 @@ struct ModuleSaveDataRequest {
 #[serde(rename_all = "camelCase")]
 struct ModuleAssignDataRequest {
     module_id: Uuid,
-    datastore_id: Uuid,
+    database_id: Uuid,
     is_raw: bool,
     tags: Vec<String>,
 }
@@ -1259,7 +1259,7 @@ async fn handle_assign_data(
     .await?
     .ok_or_else(|| Error::Forbidden)?;
 
-    let datastore_id = req.module.datastore_id;
+    let datastore_id = req.module.database_id;
     let is_raw = req.module.is_raw;
     let tags = req.module.tags.clone();
     let tags = tags.join(",");
