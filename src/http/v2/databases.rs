@@ -2,7 +2,10 @@ use crate::http::extractor::AuthUser;
 use crate::http::types::Timestamptz;
 use crate::http::ApiContext;
 use crate::http::{Error, Result};
+use axum::body::Body;
 use axum::extract::{Query, State};
+use axum::http::header::{CONTENT_DISPOSITION, CONTENT_TYPE};
+use axum::response::Response;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use itertools::Itertools;
@@ -19,6 +22,7 @@ pub(crate) fn router() -> Router<ApiContext> {
         )
         .route("/v2/database/list", get(handle_list_database))
         .route("/v2/database/moveData", post(handle_move_data))
+        .route("/v2/database/download", post(handle_database_download))
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug)]
@@ -78,6 +82,15 @@ struct DatabaseListRequest {
 struct DatabaseMoveDataRequest {
     database_id: Uuid,
     data_id: Vec<Uuid>,
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+struct DatabaseDownloadRequest {
+    database_id: Uuid,
+    is_raw: bool,
+    data_id: Vec<Uuid>,
+    file_type: String,
 }
 
 async fn handle_new_database(
@@ -425,4 +438,126 @@ async fn handle_move_data(
         message: "success".to_string(),
         data: json!({}),
     }))
+}
+
+async fn handle_database_download(
+    auth_user: AuthUser,
+    ctx: State<ApiContext>,
+    Json(req): Json<DatabaseBody<DatabaseDownloadRequest>>,
+) -> Result<Response<Body>> {
+    let workspace_id;
+    if req.database.is_raw {
+        let record = sqlx::query!(
+            // language=PostgreSQL
+            r#"select workspace_id from module_v2 where module_id = $1"#,
+            req.database.database_id
+        )
+        .fetch_one(&ctx.db)
+        .await?;
+        workspace_id = record.workspace_id;
+    } else {
+        let record = sqlx::query!(
+            // language=PostgreSQL
+            r#"select workspace_id from datastore_v2 where datastore_id = $1"#,
+            req.database.database_id
+        )
+        .fetch_one(&ctx.db)
+        .await?;
+        workspace_id = record.workspace_id;
+    }
+    let _member_record = sqlx::query!(
+        // language=PostgreSQL
+        r#"select user_level from workspace_member_v2 where workspace_id = $1 and user_id = $2"#,
+        workspace_id,
+        auth_user.user_id
+    )
+    .fetch_optional(&ctx.db)
+    .await?
+    .ok_or_else(|| Error::Forbidden)?;
+
+    let data;
+    if req.database.is_raw {
+        data = sqlx::query_as!(
+            DataFromSql,
+            // language=PostgreSQL
+            r#"select
+                    data_id,
+                    datastore_id,
+                    module_id,
+                    data_module_type,
+                    tags,
+                    data_content,
+                    extra_data,
+                    created_at "created_at: Timestamptz",
+                    updated_at "updated_at: Timestamptz"
+                from data_v2 where module_id = $1 and is_raw = true and data_id = any($2)"#,
+            req.database.database_id,
+            &req.database.data_id
+        )
+        .fetch_all(&ctx.db)
+        .await?;
+    } else {
+        data = sqlx::query_as!(
+            DataFromSql,
+            // language=PostgreSQL
+            r#"select
+                    data_id,
+                    datastore_id,
+                    module_id,
+                    data_module_type,
+                    tags,
+                    data_content,
+                    extra_data,
+                    created_at "created_at: Timestamptz",
+                    updated_at "updated_at: Timestamptz"
+                from data_v2 where datastore_id = $1 and is_raw = false and data_id = any($2)"#,
+            req.database.database_id,
+            &req.database.data_id
+        )
+        .fetch_all(&ctx.db)
+        .await?;
+    }
+
+    if req.database.file_type == "csv" {
+        let mut wtr = csv::Writer::from_writer(vec![]);
+        #[derive(serde::Serialize)]
+        struct Data {
+            content: String,
+            reference: String,
+        }
+        for r in data {
+            let extra_data = r.extra_data.unwrap_or(json!({}));
+            let d = Data {
+                content: r.data_content,
+                reference: serde_json::to_string(&extra_data).unwrap_or_default(),
+            };
+            wtr.serialize(d).unwrap();
+        }
+        let csv = wtr.into_inner().unwrap();
+        let csv = String::from_utf8(csv).unwrap();
+        let response = Response::builder()
+            .header(CONTENT_DISPOSITION, "attachment; filename=\"data.csv\"")
+            .header(CONTENT_TYPE, "text/csv; charset=utf-8")
+            .body(Body::from(csv))
+            .unwrap();
+        return Ok(response);
+    } else if req.database.file_type == "txt" {
+        let mut txt = String::new();
+        for r in data {
+            txt.push_str(&r.data_content);
+            txt.push('\n');
+            txt.push('\n');
+        }
+        let response = Response::builder()
+            .header(CONTENT_DISPOSITION, "attachment; filename=\"data.txt\"")
+            .header(CONTENT_TYPE, "text/plain; charset=utf-8")
+            .body(Body::from(txt))
+            .unwrap();
+        return Ok(response);
+    } else {
+        return Err(Error::unprocessable_entity([(
+            "fileType",
+            "fileType is not supported",
+        )]));
+    }
 }

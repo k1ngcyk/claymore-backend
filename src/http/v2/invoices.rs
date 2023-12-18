@@ -56,8 +56,10 @@ async fn handle_test() -> Result<Json<CommonResponse>> {
         "notify_url".to_string(),
         "https://claymore-dev.fluxusapis.com/v2/invoice/notify".to_string(),
     );
-    pramas.insert("clientip".to_string(), "192.168.40.100".to_string());
-    pramas.insert("device".to_string(), "pc".to_string());
+    pramas.insert(
+        "return_url".to_string(),
+        "https://claymore-dev.fluxusapis.com/v2/invoice/return".to_string(),
+    );
     let sign = get_sign(pramas.clone());
     pramas.insert("sign".to_string(), sign);
     pramas.insert("sign_type".to_string(), "MD5".to_string());
@@ -67,7 +69,7 @@ async fn handle_test() -> Result<Json<CommonResponse>> {
     let request = client
         .request(
             reqwest::Method::POST,
-            format!("https://pay.ucany.net/mapi.php"),
+            format!("https://pay.ucany.net/pay/apisubmit"),
         )
         .form(&pramas);
 

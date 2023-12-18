@@ -1,0 +1,71 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select\n                    data_id,\n                    datastore_id,\n                    module_id,\n                    data_module_type,\n                    tags,\n                    data_content,\n                    extra_data,\n                    created_at \"created_at: Timestamptz\",\n                    updated_at \"updated_at: Timestamptz\"\n                from data_v2 where datastore_id = $1 and is_raw = false and data_id = any($2)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "data_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "datastore_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "module_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 3,
+        "name": "data_module_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "tags",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "data_content",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "extra_data",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at: Timestamptz",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "updated_at: Timestamptz",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "UuidArray"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "115db2cdce615e330fd76d1935740f25be9216640c0f66515739b4696997ad78"
+}
