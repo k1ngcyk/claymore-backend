@@ -484,7 +484,7 @@ async fn handle_try_module(
     let api_key = openai::get_available_key(&ctx.db).await?;
     let output = openai::chat(
         ChatRequest {
-            model: "gpt-3.5-turbo".to_string(),
+            model: "gpt-3.5-turbo-1106".to_string(),
             input: prompt,
             max_tokens: Some(2048),
             temperature: Some(0.1),
@@ -941,7 +941,7 @@ async fn handle_run_module(
         .fetch_one(&ctx.db)
         .await?;
         let model_name = if module.module_category == "generator" {
-            "gpt-3.5-turbo"
+            "gpt-3.5-turbo-1106"
         } else {
             "gpt-4-1106-preview"
         };
@@ -1015,7 +1015,7 @@ async fn handle_run_module(
             .fetch_one(&ctx.db)
             .await?;
             let model_name = if module.module_category == "generator" {
-                "gpt-3.5-turbo"
+                "gpt-3.5-turbo-1106"
             } else {
                 "gpt-4-1106-preview"
             };
@@ -1080,7 +1080,7 @@ async fn handle_run_module(
             .await?;
 
             let model_name = if module.module_category == "generator" {
-                "gpt-3.5-turbo"
+                "gpt-3.5-turbo-1106"
             } else {
                 "gpt-4-1106-preview"
             };

@@ -22,7 +22,7 @@ pub struct ChatRequest {
 impl Default for ChatRequest {
     fn default() -> Self {
         Self {
-            model: "gpt-3.5-turbo".to_string(),
+            model: "gpt-3.5-turbo-1106".to_string(),
             input: "".to_string(),
             max_tokens: None,
             temperature: None,

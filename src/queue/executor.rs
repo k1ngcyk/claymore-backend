@@ -565,7 +565,9 @@ pub async fn execute_job_evo(
     let separator = separator.to_string();
     let reference = message["reference"].as_str().unwrap_or_default();
     let reference = reference.to_string();
-    let model_name = message["model_name"].as_str().unwrap_or("gpt-3.5-turbo");
+    let model_name = message["model_name"]
+        .as_str()
+        .unwrap_or("gpt-3.5-turbo-1106");
     if reference != "" {
         prompt = prompt.replace("@key/reference", &reference);
     }

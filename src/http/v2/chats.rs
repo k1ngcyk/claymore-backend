@@ -30,7 +30,7 @@ pub(crate) fn router() -> Router<ApiContext> {
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ChatRequest {
-    generator_id: Uuid,
+    module_id: Uuid,
     user_input: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     chat_history: Option<Vec<ChatHistory>>,
@@ -48,29 +48,20 @@ async fn handle_chat(
     ctx: State<ApiContext>,
     Json(req): Json<ChatBody<ChatRequest>>,
 ) -> Result<Json<CommonResponse>> {
-    let generator_id = req.chat.generator_id;
-    let project_id = sqlx::query!(
+    let module_id = req.chat.module_id;
+    let workspace_id = sqlx::query!(
         // language=PostgreSQL
-        r#"select project_id from generator_v2 where generator_id = $1"#,
-        generator_id
+        r#"select workspace_id from module_v2 where module_id = $1"#,
+        module_id
     )
     .fetch_one(&ctx.db)
     .await?
-    .project_id;
-
-    let team_id = sqlx::query!(
-        // language=PostgreSQL
-        r#"select team_id from project where project_id = $1"#,
-        project_id
-    )
-    .fetch_one(&ctx.db)
-    .await?
-    .team_id;
+    .workspace_id;
 
     let _member_record = sqlx::query!(
         // language=PostgreSQL
-        r#"select user_level from team_member where team_id = $1 and user_id = $2"#,
-        team_id,
+        r#"select user_level from workspace_member_v2 where workspace_id = $1 and user_id = $2"#,
+        workspace_id,
         auth_user.user_id
     )
     .fetch_optional(&ctx.db)
@@ -83,18 +74,18 @@ async fn handle_chat(
     let datadrops = sqlx::query!(
         // language=PostgreSQL
         r#"select
-            datadrop_id,
-            datadrop_content
-        from datadrop_v2
-        where generator_id = $1"#,
-        generator_id
+            candidate_id,
+            content
+        from candidate_v2
+        where module_id = $1"#,
+        module_id
     )
     .fetch_all(&ctx.db)
     .await?;
 
     let datadrops = datadrops
         .iter()
-        .map(|d| d.datadrop_content.as_str())
+        .map(|d| d.content.as_str())
         .collect::<Vec<&str>>();
 
     let transport = Transport::single_node(&ctx.config.es_url).unwrap();
@@ -102,7 +93,7 @@ async fn handle_chat(
     let response = es_client
         .indices()
         .exists(elasticsearch::indices::IndicesExistsParts::Index(&[
-            generator_id.to_string().as_str(),
+            module_id.to_string().as_str(),
         ]))
         .send()
         .await?;
@@ -111,7 +102,7 @@ async fn handle_chat(
         for datadrop in datadrops {
             let _resp = es_client
                 .index(elasticsearch::IndexParts::IndexId(
-                    generator_id.to_string().as_str(),
+                    module_id.to_string().as_str(),
                     count.to_string().as_str(),
                 ))
                 .body(json!({
@@ -124,7 +115,7 @@ async fn handle_chat(
     }
 
     let search_resp = es_client
-        .search(elasticsearch::SearchParts::Index(&[generator_id
+        .search(elasticsearch::SearchParts::Index(&[module_id
             .to_string()
             .as_str()]))
         .size(5)
@@ -182,7 +173,7 @@ async fn handle_chat(
     let client = Client::new();
     let chat_request = CreateChatCompletionRequestArgs::default()
         .max_tokens(2048u16)
-        .model("gpt-4")
+        .model("gpt-4-1106-preview")
         .temperature(0.1)
         .messages(messages)
         .build()?;

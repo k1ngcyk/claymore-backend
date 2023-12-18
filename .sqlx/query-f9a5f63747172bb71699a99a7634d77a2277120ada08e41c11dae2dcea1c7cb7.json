@@ -1,16 +1,16 @@
 {
   "db_name": "PostgreSQL",
-  "query": "select\n            datadrop_id,\n            datadrop_content\n        from datadrop_v2\n        where generator_id = $1",
+  "query": "select\n            candidate_id,\n            content\n        from candidate_v2\n        where module_id = $1",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "datadrop_id",
+        "name": "candidate_id",
         "type_info": "Uuid"
       },
       {
         "ordinal": 1,
-        "name": "datadrop_content",
+        "name": "content",
         "type_info": "Text"
       }
     ],
@@ -24,5 +24,5 @@
       false
     ]
   },
-  "hash": "e04a038f7399d566fa4fa9c08cdb30f3bf63c329060fa2fb7ac494fcf3ba2d63"
+  "hash": "f9a5f63747172bb71699a99a7634d77a2277120ada08e41c11dae2dcea1c7cb7"
 }
