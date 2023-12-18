@@ -4,7 +4,10 @@ use crate::http::ApiContext;
 use crate::http::{Error, Result};
 use crate::openai::ChatRequest;
 use crate::{openai, queue};
+use axum::body::Body;
 use axum::extract::{Query, State};
+use axum::http::header;
+use axum::response::Response;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde_json::json;
@@ -33,6 +36,7 @@ pub(crate) fn router() -> Router<ApiContext> {
         .route("/v2/module/clearFiles", post(handle_clear_files))
         .route("/v2/module/saveData", post(handle_save_data))
         .route("/v2/module/assignData", post(handle_assign_data))
+        .route("/v2/module/downloadExample", get(handle_download_example))
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -1294,4 +1298,23 @@ async fn handle_assign_data(
             "module": module,
         }),
     }))
+}
+
+async fn handle_download_example(
+    auth_user: AuthUser,
+    ctx: State<ApiContext>,
+) -> Result<Response<Body>> {
+    let mut txt = String::new();
+    txt.push_str("input,reference\n");
+    txt.push_str("I am a student,我是一名学生\n");
+    txt.push('\n');
+    let response = Response::builder()
+        .header(
+            header::CONTENT_DISPOSITION,
+            "attachment; filename=\"data.csv\"",
+        )
+        .header(header::CONTENT_TYPE, "text/csv; charset=utf-8")
+        .body(Body::from(txt))
+        .unwrap();
+    Ok(response)
 }
