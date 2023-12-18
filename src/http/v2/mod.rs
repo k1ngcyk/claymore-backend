@@ -13,6 +13,7 @@ mod databases;
 mod evaluators;
 mod files;
 mod generators;
+mod invoices;
 mod modules;
 mod templates;
 mod workspaces;
