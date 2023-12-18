@@ -29,6 +29,7 @@ pub(crate) fn router() -> Router<ApiContext> {
         .merge(modules::router())
         .merge(workspaces::router())
         .merge(databases::router())
+        .merge(invoices::router())
 }
 
 async fn handle_ping(ctx: State<ApiContext>) -> Result<Json<CommonResponse>> {
