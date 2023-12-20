@@ -522,14 +522,15 @@ async fn handle_database_download(
         let mut wtr = csv::Writer::from_writer(vec![]);
         #[derive(serde::Serialize)]
         struct Data {
-            content: String,
+            input: String,
             reference: String,
         }
         for r in data {
             let extra_data = r.extra_data.unwrap_or(json!({}));
+            let text = extra_data["text"].as_str().unwrap_or_default();
             let d = Data {
-                content: r.data_content,
-                reference: serde_json::to_string(&extra_data).unwrap_or_default(),
+                input: r.data_content,
+                reference: text.to_string(),
             };
             wtr.serialize(d).unwrap();
         }
