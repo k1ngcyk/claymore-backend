@@ -10,6 +10,7 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use itertools::Itertools;
 use serde_json::json;
+use std::collections::HashSet;
 use uuid::Uuid;
 
 use crate::http::CommonResponse;
@@ -226,6 +227,53 @@ async fn handle_database_info(
         .collect::<Vec<String>>();
     let tags = tags.into_iter().unique().collect::<Vec<String>>();
 
+    let mut keys = Vec::new();
+    if req.is_raw {
+        let module = sqlx::query!(
+            // language=PostgreSQL
+            r#"select
+                module_category
+            from module_v2 where module_id = $1"#,
+            req.database_id
+        )
+        .fetch_one(&ctx.db)
+        .await?;
+        if module.module_category == "evaluator" {
+            #[derive(serde::Serialize, PartialEq, Eq, Hash)]
+            #[serde(rename_all = "camelCase")]
+            struct KeyConfig {
+                key: String,
+                display_name: String,
+            }
+            let mut result = Vec::new();
+            for r in &data {
+                let extra_data = r.extra_data.clone().unwrap_or(json!({}));
+                let rating = extra_data["rating"].as_object();
+                if let Some(rating) = rating {
+                    let key = rating["key"].as_array();
+                    if let Some(key) = key {
+                        for k in key {
+                            let k = k.as_str().unwrap_or_default();
+                            let config = rating["keyConfigs"][k].as_object();
+                            if let Some(config) = config {
+                                let display_name =
+                                    config["displayName"].as_str().unwrap_or_default();
+                                result.push(KeyConfig {
+                                    key: k.to_string(),
+                                    display_name: display_name.to_string(),
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            if result.len() > 0 {
+                let unique_keys: HashSet<_> = result.into_iter().collect();
+                keys = unique_keys.into_iter().collect::<Vec<_>>();
+            }
+        }
+    }
+
     Ok(Json(CommonResponse {
         code: 200,
         message: "success".to_string(),
@@ -233,6 +281,7 @@ async fn handle_database_info(
             "databaseName": database_name,
             "data": data,
             "tags": tags,
+            "keys": keys,
         }),
     }))
 }
