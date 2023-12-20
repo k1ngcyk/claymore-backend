@@ -120,6 +120,7 @@ struct ModuleRunRequest {
 #[serde(rename_all = "camelCase")]
 struct ModuleClearFilesRequest {
     module_id: Uuid,
+    file_id: Option<Uuid>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug)]
@@ -1145,9 +1146,19 @@ async fn handle_clear_files(
     .await?
     .ok_or_else(|| Error::Forbidden)?;
 
-    sqlx::query!(r#"delete from file_module where module_id = $1"#, module_id)
+    if let Some(file_id) = req.module.file_id {
+        sqlx::query!(
+            r#"delete from file_module where module_id = $1 and file_id = $2"#,
+            module_id,
+            file_id
+        )
         .execute(&ctx.db)
         .await?;
+    } else {
+        sqlx::query!(r#"delete from file_module where module_id = $1"#, module_id)
+            .execute(&ctx.db)
+            .await?;
+    }
 
     Ok(Json(CommonResponse {
         code: 200,
@@ -1226,6 +1237,13 @@ async fn handle_save_data(
         .execute(&ctx.db)
         .await?;
     }
+
+    let _clean_candidate = sqlx::query!(
+        r#"delete from candidate_v2 where module_id = $1"#,
+        module_id
+    )
+    .execute(&ctx.db)
+    .await?;
 
     Ok(Json(CommonResponse {
         code: 200,
