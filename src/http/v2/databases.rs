@@ -256,11 +256,23 @@ async fn handle_database_info(
                             let k = k.as_str().unwrap_or_default();
                             let config = rating["keyConfigs"][k].as_object();
                             if let Some(config) = config {
-                                let display_name =
-                                    config["displayName"].as_str().unwrap_or_default();
+                                let display_name;
+                                if config.contains_key("displayName") {
+                                    display_name = config["displayName"]
+                                        .as_str()
+                                        .unwrap_or_default()
+                                        .to_string();
+                                } else if config.contains_key("displayname") {
+                                    display_name = config["displayname"]
+                                        .as_str()
+                                        .unwrap_or_default()
+                                        .to_string();
+                                } else {
+                                    display_name = String::default();
+                                }
                                 result.push(KeyConfig {
                                     key: k.to_string(),
-                                    display_name: display_name.to_string(),
+                                    display_name: display_name,
                                 });
                             }
                         }

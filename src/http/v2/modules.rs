@@ -752,8 +752,8 @@ async fn handle_list_module(
             select
                 module_id,
                 count(*) as job_count,
-                bool_or(counts < target_count AND counts > 0) as some_running,
-                bool_and(counts = 0) as all_zero
+                bool_or(counts < target_count AND counts > 0 AND counts is not null) as some_running,
+                bool_and(counts = 0 OR counts is null) as all_zero
             from job_v2 j
             left join (
                 select 
