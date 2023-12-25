@@ -19,7 +19,7 @@ use time::OffsetDateTime;
 /// * `cookie::CookieBuilder` (used by Actix-web and `tower-cookies`) bakes-in `time::Duration`
 ///   for setting the expiration
 ///     * not really Chrono's fault but certainly doesn't help.
-#[derive(sqlx::Type)]
+#[derive(sqlx::Type, Debug)]
 pub struct Timestamptz(pub OffsetDateTime);
 
 impl Serialize for Timestamptz {

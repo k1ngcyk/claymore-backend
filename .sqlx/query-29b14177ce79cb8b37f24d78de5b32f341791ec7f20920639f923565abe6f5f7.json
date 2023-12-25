@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "insert into file_generator_v2 (generator_id, file_id) values ($1, $2)",
+  "query": "delete from file_module where module_id = $1 and file_id = $2",
   "describe": {
     "columns": [],
     "parameters": {
@@ -11,5 +11,5 @@
     },
     "nullable": []
   },
-  "hash": "ec191d4aa6e5516fb8d1c5b27134ff6f57fe0a030e8ada80fdd369c0aaed3f28"
+  "hash": "29b14177ce79cb8b37f24d78de5b32f341791ec7f20920639f923565abe6f5f7"
 }

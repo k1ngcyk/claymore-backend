@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select\n                        distinct tags\n                        from data_v2\n                        where is_raw = true and module_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "tags",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "e15963538b6c99680cf40fc2da715e968962319c0c94b6f47445bbe74882faed"
+}

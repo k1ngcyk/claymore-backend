@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select\n                datastore_id,\n                datastore_name\n            from datastore_v2 where workspace_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "datastore_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "datastore_name",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "80c202e1e5b396b936747106ad7f9dc6ecb65932e5d83d11d87613d7791261cb"
+}

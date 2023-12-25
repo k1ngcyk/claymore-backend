@@ -3,7 +3,7 @@ use crate::http::types::Timestamptz;
 use crate::http::ApiContext;
 use crate::http::{Error, Result, ResultExt};
 use async_openai::{
-    types::{ChatCompletionRequestMessageArgs, CreateChatCompletionRequestArgs, Role},
+    types::{ChatCompletionRequestUserMessageArgs, CreateChatCompletionRequestArgs, Role},
     Client,
 };
 use axum::extract::{Query, State};
@@ -476,11 +476,10 @@ async fn handle_try_generator(
             .max_tokens(word_count as u16)
             .model(&model_name)
             .temperature(temperature as f32)
-            .messages([ChatCompletionRequestMessageArgs::default()
-                .role(Role::User)
+            .messages([ChatCompletionRequestUserMessageArgs::default()
                 .content(format!(r#"{}"#, prompt))
-                .build()
-                .unwrap()])
+                .build()?
+                .into()])
             .build()?;
         let gpt_response = client.chat().create(chat_request).await?;
         let output = &gpt_response
@@ -490,7 +489,9 @@ async fn handle_try_generator(
             .next()
             .unwrap()
             .message
-            .content;
+            .content
+            .clone()
+            .unwrap_or("".to_string());
         prompt_responses.push(output.to_string());
         response = output.to_string();
     }

@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select\n                file_id,\n                file_name,\n                file_path,\n                file_type,\n                md5,\n                extra_data,\n                created_at \"created_at: Timestamptz\",\n                updated_at \"updated_at: Timestamptz\"\n            from files where md5 = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "file_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "file_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "file_path",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "file_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "md5",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "extra_data",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 6,
+        "name": "created_at: Timestamptz",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "updated_at: Timestamptz",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "7999375bdfd8fe63d7ccb17f7cce3260bffa79234c249f294f7a1eaf3756e9c0"
+}

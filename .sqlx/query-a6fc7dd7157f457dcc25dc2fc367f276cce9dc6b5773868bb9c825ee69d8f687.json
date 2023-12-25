@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select\n                    count(*)\n                from candidate_v2 where job_id = $1 group by job_status_group_id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "a6fc7dd7157f457dcc25dc2fc367f276cce9dc6b5773868bb9c825ee69d8f687"
+}

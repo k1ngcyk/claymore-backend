@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select\n            workspace_id,\n            module_category,\n            module_name\n        from module_v2 where module_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "workspace_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "module_category",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "module_name",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "64ef82362e3693bcb31145eedba4847c2f9ee447d45d54346e504e7801031357"
+}

@@ -4,9 +4,8 @@ use crate::http::ApiContext;
 use crate::http::CommonResponse;
 use crate::http::Error;
 use crate::http::Result;
-use axum::extract::Query;
 use axum::extract::{DefaultBodyLimit, Multipart, State};
-use axum::routing::{get, post};
+use axum::routing::post;
 use axum::{Json, Router};
 use md5;
 use nanoid::nanoid;
@@ -19,13 +18,13 @@ use uuid::Uuid;
 
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct FileFromQuery {
+struct FileFromSql {
     file_id: Uuid,
     file_name: String,
     file_path: String,
     file_type: String,
     md5: String,
-    team_id: Uuid,
+    extra_data: Option<serde_json::Value>,
     created_at: Timestamptz,
     #[serde(skip_serializing_if = "Option::is_none")]
     updated_at: Option<Timestamptz>,
@@ -42,13 +41,13 @@ async fn handle_file_upload(
     ctx: State<ApiContext>,
     mut multipart: Multipart,
 ) -> Result<Json<CommonResponse>> {
-    let mut generator_id: Option<Uuid> = None;
+    let mut module_id: Option<Uuid> = None;
     while let Some(field) = multipart.next_field().await.unwrap() {
         let filename = field.name().unwrap().to_string();
-        if filename == "generatorId" {
+        if filename == "moduleId" {
             let id = field.text().await.unwrap();
             if let Ok(uuid) = Uuid::parse_str(&id) {
-                generator_id = Some(uuid);
+                module_id = Some(uuid);
             }
             continue;
         }
@@ -60,36 +59,42 @@ async fn handle_file_upload(
         let file_path = Path::new(&ctx.config.upload_dir).join(&file_path_store);
         let field_data = field.bytes().await.unwrap();
         let file_md5 = format!("{:x}", md5::compute(&field_data));
-        let team_id = sqlx::query!(
-            r#"select team_id from team_member where user_id = $1"#,
-            auth_user.user_id
-        )
-        .fetch_one(&ctx.db)
-        .await?
-        .team_id;
 
         let file_from_query = sqlx::query_as!(
-            FileFromQuery,
+            FileFromSql,
             r#"select
                 file_id,
                 file_name,
                 file_path,
                 file_type,
                 md5,
-                team_id,
+                extra_data,
                 created_at "created_at: Timestamptz",
                 updated_at "updated_at: Timestamptz"
-            from file_v2 where md5 = $1 and team_id = $2"#,
-            file_md5,
-            team_id
+            from files where md5 = $1"#,
+            file_md5
         )
         .fetch_optional(&ctx.db)
         .await?;
         if let Some(file) = file_from_query {
-            if let Some(generator_id) = generator_id {
+            if let Some(module_id) = module_id {
+                let module_category = sqlx::query!(
+                    r#"select module_category from module_v2 where module_id = $1"#,
+                    module_id
+                )
+                .fetch_one(&ctx.db)
+                .await?
+                .module_category;
+
+                if module_category == "evaluator" && file.file_type != "csv" {
+                    return Err(Error::unprocessable_entity([(
+                        "file",
+                        "file for evaluator must be csv",
+                    )]));
+                }
                 sqlx::query!(
-                    r#"insert into file_generator_v2 (generator_id, file_id) values ($1, $2)"#,
-                    generator_id,
+                    r#"insert into file_module (module_id, file_id) values ($1, $2)"#,
+                    module_id,
                     file.file_id
                 )
                 .execute(&ctx.db)
@@ -106,38 +111,53 @@ async fn handle_file_upload(
                 }));
             } else {
                 return Err(Error::unprocessable_entity([(
-                    "generatorId",
-                    "generatorId is required as first field",
+                    "moduleId",
+                    "moduleId is required as first field",
                 )]));
             }
         }
+        let file_extension = Path::new(&filename).extension().unwrap().to_str().unwrap();
+
         let file_from_query = sqlx::query_as!(
-            FileFromQuery,
-            r#"insert into file_v2 (file_name, file_path, file_type, md5, team_id) values ($1, $2, $3, $4, $5) returning
+            FileFromSql,
+            r#"insert into files (file_name, file_path, file_type, md5) values ($1, $2, $3, $4) returning
                 file_id,
                 file_name,
                 file_path,
                 file_type,
                 md5,
-                team_id,
+                extra_data,
                 created_at "created_at: Timestamptz",
                 updated_at "updated_at: Timestamptz"
             "#,
             filename,
             &file_path_store,
-            "",
+            file_extension,
             file_md5,
-            team_id,
         )
         .fetch_one(&ctx.db)
         .await?;
         let mut file = fs::File::create(&file_path).await.unwrap();
         file.write_all(&field_data).await.unwrap();
         let file_id = file_from_query.file_id;
-        if let Some(generator_id) = generator_id {
+        if let Some(module_id) = module_id {
+            let module_category = sqlx::query!(
+                r#"select module_category from module_v2 where module_id = $1"#,
+                module_id
+            )
+            .fetch_one(&ctx.db)
+            .await?
+            .module_category;
+
+            if module_category == "evaluator" && file_extension != "csv" {
+                return Err(Error::unprocessable_entity([(
+                    "file",
+                    "file for evaluator must be csv",
+                )]));
+            }
             sqlx::query!(
-                r#"insert into file_generator_v2 (generator_id, file_id) values ($1, $2)"#,
-                generator_id,
+                r#"insert into file_module (module_id, file_id) values ($1, $2)"#,
+                module_id,
                 file_id
             )
             .execute(&ctx.db)
@@ -155,16 +175,16 @@ async fn handle_file_upload(
             }));
         } else {
             return Err(Error::unprocessable_entity([(
-                "generatorId",
-                "generatorId is required as first field",
+                "moduleId",
+                "moduleId is required as first field",
             )]));
         }
     }
 
-    if let None = generator_id {
+    if let None = module_id {
         Err(Error::unprocessable_entity([(
-            "generatorId",
-            "generatorId is required as first field",
+            "moduleId",
+            "moduleId is required as first field",
         )]))
     } else {
         Ok(Json(CommonResponse {

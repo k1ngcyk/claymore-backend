@@ -1,28 +1,22 @@
-use axum::extract::{Extension, Path};
 use axum::routing::get;
 use axum::{Json, Router};
 
-use crate::http::extractor::AuthUser;
-use crate::http::types::Timestamptz;
 use crate::http::ApiContext;
-use crate::http::{Error, Result, ResultExt};
-use async_openai::{
-    types::{ChatCompletionRequestMessageArgs, CreateChatCompletionRequestArgs, Role},
-    Client,
-};
-use axum::extract::{Query, State};
-use log::info;
-use regex::Regex;
+use crate::http::Result;
+use axum::extract::State;
 use serde_json::json;
-use uuid::Uuid;
 
 use crate::http::CommonResponse;
 
 mod chats;
+mod databases;
 mod evaluators;
 mod files;
 mod generators;
+mod invoices;
+mod modules;
 mod templates;
+mod workspaces;
 
 pub(crate) fn router() -> Router<ApiContext> {
     Router::new()
@@ -32,6 +26,10 @@ pub(crate) fn router() -> Router<ApiContext> {
         .merge(files::router())
         .merge(chats::router())
         .merge(evaluators::router())
+        .merge(modules::router())
+        .merge(workspaces::router())
+        .merge(databases::router())
+        .merge(invoices::router())
 }
 
 async fn handle_ping(ctx: State<ApiContext>) -> Result<Json<CommonResponse>> {

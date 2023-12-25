@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update data_v2 set datastore_id = $1, is_raw = false where data_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4067eb5c231e2ad1884ff28419a5c725712a1c3dd1ec6c484621ac37ee27cf06"
+}

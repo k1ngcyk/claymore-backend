@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select\n                    count(data_id)\n                    from data_v2\n                    where is_raw = false and datastore_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "96a48d58c943049ae890e01aeb0ca12adbbd11484937016bcaa25bfd50c240db"
+}

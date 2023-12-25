@@ -1,17 +1,15 @@
 use crate::http::extractor::AuthUser;
 use crate::http::types::Timestamptz;
 use crate::http::ApiContext;
-use crate::http::{Error, Result, ResultExt};
+use crate::http::{Error, Result};
 use crate::queue;
 use async_openai::{
-    types::{ChatCompletionRequestMessageArgs, CreateChatCompletionRequestArgs, Role},
+    types::{ChatCompletionRequestUserMessageArgs, CreateChatCompletionRequestArgs, Role},
     Client,
 };
 use axum::extract::{Query, State};
 use axum::routing::{get, post};
 use axum::{Json, Router};
-use log::info;
-use regex::Regex;
 use serde_json::json;
 use std::path::Path;
 use tiktoken_rs::cl100k_base;
@@ -504,11 +502,10 @@ async fn handle_try_generator(
         .max_tokens(2048 as u16)
         .model("gpt-3.5-turbo")
         .temperature(0.1)
-        .messages([ChatCompletionRequestMessageArgs::default()
-            .role(Role::User)
+        .messages([ChatCompletionRequestUserMessageArgs::default()
             .content(format!(r#"{}"#, prompt))
-            .build()
-            .unwrap()])
+            .build()?
+            .into()])
         .build()?;
     let gpt_response = client.chat().create(chat_request).await?;
     let output = &gpt_response
@@ -518,7 +515,9 @@ async fn handle_try_generator(
         .next()
         .unwrap()
         .message
-        .content;
+        .content
+        .clone()
+        .unwrap_or("".to_string());
 
     let tokens = bpe.encode_with_special_tokens(&output);
     sqlx::query!(

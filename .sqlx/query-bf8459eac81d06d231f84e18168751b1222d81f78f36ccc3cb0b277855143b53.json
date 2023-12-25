@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "update openai set openai_status = 0 where openai_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "bf8459eac81d06d231f84e18168751b1222d81f78f36ccc3cb0b277855143b53"
+}

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "insert into file_v2 (file_name, file_path, file_type, md5, team_id) values ($1, $2, $3, $4, $5) returning\n                file_id,\n                file_name,\n                file_path,\n                file_type,\n                md5,\n                team_id,\n                created_at \"created_at: Timestamptz\",\n                updated_at \"updated_at: Timestamptz\"\n            ",
+  "query": "insert into files (file_name, file_path, file_type, md5) values ($1, $2, $3, $4) returning\n                file_id,\n                file_name,\n                file_path,\n                file_type,\n                md5,\n                extra_data,\n                created_at \"created_at: Timestamptz\",\n                updated_at \"updated_at: Timestamptz\"\n            ",
   "describe": {
     "columns": [
       {
@@ -30,8 +30,8 @@
       },
       {
         "ordinal": 5,
-        "name": "team_id",
-        "type_info": "Uuid"
+        "name": "extra_data",
+        "type_info": "Jsonb"
       },
       {
         "ordinal": 6,
@@ -49,8 +49,7 @@
         "Text",
         "Text",
         "Text",
-        "Text",
-        "Uuid"
+        "Text"
       ]
     },
     "nullable": [
@@ -59,10 +58,10 @@
       false,
       false,
       false,
-      false,
+      true,
       false,
       true
     ]
   },
-  "hash": "93e8bba7f0fc90af048f77524fa2c423dd050aa97337dcae73afc9f705c0fd51"
+  "hash": "1a2bbda131069fef4de84825ac1c50ca5ee92cdffbbeb4187c43015f62fa0c06"
 }

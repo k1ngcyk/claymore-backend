@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "insert into module_v2 (module_name, template_id, workspace_id, module_category, config_data)\n        values ($1, $2, $3, $4, $5)\n        returning module_id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "module_id",
+        "type_info": "Uuid"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Jsonb"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "f78b79c4239f65b2d53e2f6e9853bd758065ea204dde23b3d829c839fc81f6de"
+}

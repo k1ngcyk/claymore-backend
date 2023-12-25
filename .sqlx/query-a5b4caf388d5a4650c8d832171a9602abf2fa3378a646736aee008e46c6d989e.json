@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select user_level from workspace_member_v2 where workspace_id = $1 and user_id = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "user_level",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "a5b4caf388d5a4650c8d832171a9602abf2fa3378a646736aee008e46c6d989e"
+}
