@@ -1207,6 +1207,22 @@ async fn handle_save_data(
     .fetch_all(&ctx.db)
     .await?;
 
+    let job_ids_record = sqlx::query!(
+        r#"select
+            distinct job_id
+        from candidate_v2 where module_id = $1"#,
+        module_id
+    )
+    .fetch_all(&ctx.db)
+    .await?;
+
+    let mut job_ids = Vec::new();
+    for job_id_record in job_ids_record {
+        if let Some(job_id) = job_id_record.job_id {
+            job_ids.push(job_id);
+        }
+    }
+
     let distinct_tags = sqlx::query!(
         r#"select distinct tags from data_v2 where module_id = $1 and is_raw = true"#,
         module_id
@@ -1241,6 +1257,13 @@ async fn handle_save_data(
     let _clean_candidate = sqlx::query!(
         r#"delete from candidate_v2 where module_id = $1"#,
         module_id
+    )
+    .execute(&ctx.db)
+    .await?;
+
+    let _update_job_status = sqlx::query!(
+        r#"update job_v2 set job_status = 1 where job_id = any($1)"#,
+        &job_ids
     )
     .execute(&ctx.db)
     .await?;
